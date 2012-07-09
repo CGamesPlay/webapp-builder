@@ -18,7 +18,7 @@ describe 'Maker', ->
       disableBuiltin: yes
       sourcePath: '.'
 
-    @wildcard = Builder.File.factory '%%',
+    @wildcard = Builder.Copy.factory '%%',
       maker: @maker
     @cache_everything = Builder.AppCache.factory 'app.cache', @wildcard,
       maker: @maker

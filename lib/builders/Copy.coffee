@@ -1,15 +1,19 @@
 Builder = require '../Builder'
 Node = require '../Node'
 
-Builder.registerBuilder class File extends Builder
+Builder.registerBuilder class Copy extends Builder
   toString: ->
-    "File(#{@target?.toString()})"
+    if @target?.name is @sources[0].name
+      "Copy(#{@target?.toString()})"
+    else
+      "Copy(#{@target?.toString()}, #{@sources[0]})"
 
   validateSources: ->
     if @sources.length != 1
       throw new Error "#{@} requires exactly one source."
 
   inferTarget: ->
+    return super if @sources[0] instanceof Builder
     Node.resolve @sources[0], @maker.getTargetPath
 
   handleRequest: (req, res, next) ->

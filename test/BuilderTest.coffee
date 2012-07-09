@@ -17,9 +17,9 @@ describe 'Builder', ->
       disableBuiltin: true
       sourcePath: '.'
       targetPath: 'out'
-    @specific_file = Builder.File.factory 'test.txt',
+    @specific_file = Builder.Copy.factory 'test.txt',
       maker: @maker
-    @wildcard_file = Builder.File.factory '%%.txt',
+    @wildcard_file = Builder.Copy.factory '%%.txt',
       maker: @maker
     @dependent_file = Builder.AppCache.factory 'app.cache', @specific_file,
       maker: @maker
