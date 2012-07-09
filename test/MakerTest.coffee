@@ -16,6 +16,7 @@ describe 'Maker', ->
   beforeEach ->
     @maker = new Maker
       disableBuiltin: yes
+      sourcePath: '.'
 
     @wildcard = Builder.File.factory '%%',
       maker: @maker

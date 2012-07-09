@@ -1,5 +1,6 @@
 Node = require './Node'
 mime = require 'mime'
+path = require 'path'
 
 module.exports = class Builder
   @builderTypes: {}
@@ -86,7 +87,7 @@ module.exports = class Builder
           resolved_source instanceof Node and not resolved_source.exists()
         if @maker.options.verbose >= 2
           console.log "#{@} can't build due to missing " +
-            "#{resolved_source.getPath()}."
+            "#{path.relative process.cwd(), resolved_source.getPath()}."
         can_resolve = false
         break
       resolved_source

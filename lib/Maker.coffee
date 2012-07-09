@@ -6,12 +6,17 @@ path = require 'path'
 vm = require 'vm'
 
 module.exports = class Maker
+  @defaultOptions:
+    sourcePath: path.resolve '.'
+    targetPath: path.resolve 'out'
+
   constructor: (@externalOptions = {}) ->
     @reset()
 
   reset: ->
     @vmContext = vm.createContext()
     @options = {}
+    @options[k] = v for k, v of Maker.defaultOptions
     @options[k] = v for k, v of @externalOptions
     @builders = []
 
@@ -19,8 +24,8 @@ module.exports = class Maker
     @loadBuiltinMakefile() unless @options.disableBuiltin
     @
 
-  getSourcePath: => @options.sourcePath ? '.'
-  getTargetPath: => @options.targetPath ? '.'
+  getSourcePath: => @options.sourcePath
+  getTargetPath: => @options.targetPath
 
   # Load the built-in Makefile.
   loadBuiltinMakefile: ->

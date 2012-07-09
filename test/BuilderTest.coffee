@@ -15,6 +15,8 @@ describe 'Builder', ->
   beforeEach ->
     @maker = new Maker
       disableBuiltin: true
+      sourcePath: '.'
+      targetPath: 'out'
     @specific_file = Builder.File.factory 'test.txt',
       maker: @maker
     @wildcard_file = Builder.File.factory '%%.txt',
