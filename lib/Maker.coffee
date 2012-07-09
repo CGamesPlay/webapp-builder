@@ -5,9 +5,6 @@ fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
 
-# Import all builders. They self-register.
-require './builders/index'
-
 module.exports = class Maker
   constructor: (@externalOptions = {}) ->
     @reset()
@@ -19,11 +16,11 @@ module.exports = class Maker
     @builders = []
 
     @prepareEnvironment @vmContext
-    @loadBuiltinMakefile()
+    @loadBuiltinMakefile() unless @options.disableBuiltin
     @
 
-  getSourcePath: => @options.sourcePath
-  getTargetPath: => @options.targetPath
+  getSourcePath: => @options.sourcePath ? '.'
+  getTargetPath: => @options.targetPath ? '.'
 
   # Load the built-in Makefile.
   loadBuiltinMakefile: ->
@@ -45,9 +42,14 @@ module.exports = class Maker
     if path.substr(-7) == ".coffee"
       code = CoffeeScript.compile code
 
+    @evaluateScript code
+
+  evaluateScript: (code) ->
     Maker.currentMaker = @
-    vm.runInContext code, @vmContext, path
-    Maker.currentMaker = undefined
+    try
+      vm.runInContext code, @vmContext, path
+    finally
+      Maker.currentMaker = undefined
     @
 
   # Install the necessary functions into the Makefile context.
@@ -73,3 +75,6 @@ module.exports = class Maker
       actual_builder = try_builder.getBuilderFor path
       return actual_builder if actual_builder?
     null
+
+  findTargetsAffectedBy: (path) ->
+    b for b in @builders when b.isAffectedBy path

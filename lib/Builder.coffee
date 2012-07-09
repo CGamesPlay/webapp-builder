@@ -1,6 +1,5 @@
 Node = require './Node'
 mime = require 'mime'
-path = require 'path'
 
 module.exports = class Builder
   @builderTypes: {}
@@ -36,15 +35,17 @@ module.exports = class Builder
 
   @registerBuilder: (b) ->
     @builderTypes[b.name] = b.factory.bind b
+    Builder[b.name] = b
 
   constructor: (@target, @sources, @options) ->
     @maker = @options.maker
+    @implied = @options.implied
 
     @validateSources()
     @target = @inferTarget() unless @target?
     @name = @target.name
 
-    @maker.registerBuilder @ unless @options.implied
+    @maker?.registerBuilder @ unless @implied
 
   toString: ->
     "Builder.#{@constructor.name}(#{@target?.toString()}, " +
@@ -98,6 +99,15 @@ module.exports = class Builder
 
     return new @constructor resolved_target, resolved_sources, options
 
+  isAffectedBy: (node) ->
+    for s in @sources
+      if s instanceof Node
+        if s.refersTo node
+          return true
+      else if s.isAffectedBy node
+        return true
+    return false
+
   getMimeType: ->
     mime.lookup @target.name
 
@@ -110,3 +120,6 @@ module.exports = class Builder
       res.setHeader 'Content-Type', @getMimeType
       res.write data
       res.end()
+
+# Import all builders. They self-register.
+require './builders/index'

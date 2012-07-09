@@ -26,6 +26,10 @@ module.exports = class Node
   nameMatches: (name) ->
     @name == name
 
+  # Returns true if this node could be referencing the given node.
+  refersTo: (node) ->
+    @getPath() is node.getPath()
+
   exists: ->
     path.existsSync @getPath()
 
@@ -46,6 +50,9 @@ class Node.Wildcard extends Node
 
   nameMatches: (name) ->
     @regexp.test name
+
+  refersTo: (node) ->
+    @nameMatches(node.name) and @prefixGetter() is node.prefixGetter()
 
   exists: -> false
 
