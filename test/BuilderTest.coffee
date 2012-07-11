@@ -46,10 +46,17 @@ describe 'Builder', ->
       expect(target.name).to.equal("%%.js")
 
   describe "#getBuilderFor", ->
-    it "resolves wildcards", ->
-      target = @wildcard_file.getBuilderFor 'test.txt'
+    it "resolves static files", ->
+      target_node = NodeMock.resolve 'test.txt', noPrefix
+      target = @specific_file.getBuilderFor target_node
       expect(target).to.exist
-      expect(target.name).to.equal "test.txt"
+      expect(target.name).to.equal 'test.txt'
+
+    it "resolves wildcards", ->
+      target_node = NodeMock.resolve 'test.txt', noPrefix
+      target = @wildcard_file.getBuilderFor target_node
+      expect(target).to.exist
+      expect(target.name).to.equal 'test.txt'
 
   describe "#isAffectedBy", ->
     it "handles static filenames", ->

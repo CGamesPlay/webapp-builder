@@ -2,13 +2,22 @@ fs = require 'fs'
 path = require 'path'
 
 module.exports = class Node
+  @nameWithinPrefix: (name, prefixGetter) ->
+    resolved_prefix = path.resolve prefixGetter()
+    resolved_name = path.resolve resolved_prefix, name
+    relative_name = path.relative resolved_prefix, resolved_name
+    if relative_name[0..2] is '../'
+      throw new Error "#{name} is not within #{prefixGetter}"
+    relative_name
+
   @resolve: (name, prefixGetter) ->
     return name if typeof name is 'object'
+    name = @nameWithinPrefix name, prefixGetter
     if name.indexOf('%') != -1
       return new Node.Wildcard name, prefixGetter
 
     try
-      stats = fs.statSync path.join prefixGetter(), name
+      stats = fs.statSync path.resolve prefixGetter(), name
       if not stats.isDirectory()
         new Node.File name, prefixGetter
       else
@@ -21,7 +30,7 @@ module.exports = class Node
   toString: -> JSON.stringify(@name)
 
   getPath: ->
-    "#{@prefixGetter()}/#{@name}"
+    path.join @prefixGetter(), @name
 
   nameMatches: (name) ->
     @name == name

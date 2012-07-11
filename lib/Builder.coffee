@@ -68,15 +68,15 @@ module.exports = class Builder
     target = "#{basename}#{@constructor.targetSuffix}"
     Node.resolve target, @maker.getTargetPath
 
-  getBuilderFor: (path) ->
+  getBuilderFor: (target_node) ->
     # If this Builder can't build this path, return null
-    return null unless @target.nameMatches path
+    return null unless @target.nameMatches target_node.name
     if !(@target instanceof Node.Wildcard)
       return @
 
     else
       # We have to resolve the wildcards to see if we can build this
-      token = @target.extractWildcard path
+      token = @target.extractWildcard target_node.name
       @resolveUsing token
 
   resolveUsing: (token) ->

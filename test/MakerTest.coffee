@@ -11,7 +11,7 @@ describe 'Maker', ->
     "test.txt": "It works!"
 
   it "instantiates", ->
-    expect(-> new Maker).to.not.Throw
+    expect(-> new Maker).to.not.throw()
 
   beforeEach ->
     @maker = new Maker

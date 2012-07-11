@@ -1,5 +1,6 @@
 express = require 'express'
 Maker = require './Maker'
+Node = require './Node'
 Fallback = require './builders/Fallback'
 
 exports.middleware = (args) ->
@@ -19,6 +20,7 @@ exports.middleware = (args) ->
     request_url += "index.html" if request_url.substr(-1) == "/"
     request_url = request_url.substring 1
 
+    target = Node.resolve request_url, maker.getTargetPath
     builder = maker.resolve request_url
 
     if builder?

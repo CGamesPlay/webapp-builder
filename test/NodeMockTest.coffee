@@ -1,7 +1,25 @@
+Node = require '../lib/Node'
 NodeMock = require './mock/NodeMock'
 chai = require 'chai'
+path = require 'path'
 
 expect = chai.expect
+
+describe "Node", ->
+  outPrefix = -> "out"
+
+  describe "#nameWithinPrefix", ->
+    it "works in the normal case", ->
+      name = Node.nameWithinPrefix "test.txt", outPrefix
+      expect(name).to.equal "test.txt"
+
+    it "works against pre-resolved names", ->
+      name = Node.nameWithinPrefix path.resolve("out/test.txt"), outPrefix
+      expect(name).to.equal "test.txt"
+
+    it "throws for invalid input", ->
+      test = -> Node.nameWithinPrefix path.resolve("test.txt"), outPrefix
+      expect(test).to.throw()
 
 describe "NodeMock", ->
   noPrefix = -> '.'
