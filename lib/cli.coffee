@@ -1,4 +1,5 @@
 ArgumentParser = require('argparse').ArgumentParser
+path = require 'path'
 
 parser = new ArgumentParser
   addHelp: yes

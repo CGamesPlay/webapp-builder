@@ -1,5 +1,5 @@
 Builder = require '../lib/Builder'
-Maker = require '../lib/Maker'
+BuildManager = require '../lib/BuildManager'
 NodeMock = require './mock/NodeMock'
 chai = require 'chai'
 
@@ -13,33 +13,33 @@ describe 'Builder', ->
     "something.coffee": "coffeescript"
 
   beforeEach ->
-    @maker = new Maker
+    @manager = new BuildManager
       disableBuiltin: true
       sourcePath: '.'
       targetPath: 'out'
-    @specific_file = Builder.Copy.factory 'test.txt',
-      maker: @maker
-    @wildcard_file = Builder.Copy.factory '%%.txt',
-      maker: @maker
-    @dependent_file = Builder.AppCache.factory 'app.cache', @specific_file,
-      maker: @maker
+    @specific_file = new Builder.Copy 'test.txt',
+      manager: @manager
+    @wildcard_file = new Builder.Copy '%%.txt',
+      manager: @manager
+    @dependent_file = new Builder.AppCache 'app.cache', @specific_file,
+      manager: @manager
 
-  describe "#factory", ->
+  describe "#constructor", ->
     it "refers to source files", ->
       getter = @wildcard_file.sources[0].prefixGetter
-      expect(getter).to.equal(@maker.getSourcePath)
+      expect(getter).to.equal(@manager.getSourcePath)
 
   describe "#inferTarget", ->
     class WithSuffix extends Builder
       @targetSuffix: '.js'
 
     beforeEach ->
-      @builder = WithSuffix.factory "%%.coffee"
-        maker: @maker
+      @builder = new WithSuffix "%%.coffee",
+        manager: @manager
 
     it "works", ->
       expect(@builder.target.name).to.equal("%%.js")
-      expect(@builder.target.prefixGetter).to.equal(@maker.getTargetPath)
+      expect(@builder.target.prefixGetter).to.equal(@manager.getTargetPath)
 
     it "handles suffixes", ->
       target = @builder.inferTarget()

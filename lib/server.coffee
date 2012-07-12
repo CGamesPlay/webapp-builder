@@ -1,33 +1,29 @@
 express = require 'express'
-Maker = require './Maker'
+BuildManager = require './BuildManager'
 Node = require './Node'
 Fallback = require './builders/Fallback'
 
 exports.middleware = (args) ->
-  maker = new Maker args
-  if args.file?
-    maker.loadMakefile(args.file)
-  else
-    maker.loadDefaultMakefile()
+  args.runtime = 'server'
+  manager = new BuildManager args
 
   if args.fallthrough is false
-    fallback_builder = Fallback.factory '%%', [],
-      maker: maker
-      implied: yes
+    fallback_builder = new Fallback '%%', [],
+      manager: manager
 
   middleware = (req, res, next) ->
     request_url = req.url
     request_url += "index.html" if request_url.substr(-1) == "/"
     request_url = request_url.substring 1
 
-    target = Node.resolve request_url, maker.getTargetPath
-    builder = maker.resolve request_url
+    target = Node.resolve request_url, manager.getTargetPath
+    builder = manager.resolve target
 
     if builder?
       console.log "#{req.url} will be built by #{builder}" if args.verbose > 0
     else
       if fallback_builder?
-        builder = fallback_builder.getBuilderFor request_url
+        builder = fallback_builder.getBuilderFor target
       else
         return next()
 

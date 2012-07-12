@@ -14,7 +14,7 @@ Builder.registerBuilder class Copy extends Builder
 
   inferTarget: ->
     return super if @sources[0] instanceof Builder
-    Node.resolve @sources[0], @maker.getTargetPath
+    Node.resolve @sources[0], @manager.getTargetPath
 
   handleRequest: (req, res, next) ->
     if @sources[0] instanceof Node.Dir and req.url.substr(-1) != "/"

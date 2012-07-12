@@ -84,3 +84,9 @@ describe "NodeMock.Wildcard", ->
       wildcard = NodeMock.resolve "%%.txt", withPrefix
       outside_file = NodeMock.resolve "test.txt", noPrefix
       expect(wildcard.refersTo outside_file).to.be.false
+
+  describe "#extractWildcard", ->
+    it "extracts with paths", ->
+      wildcard = NodeMock.resolve "dir/%%.extension", noPrefix
+      token = wildcard.extractWildcard "dir/path/file.extension"
+      expect(token).to.equal("path/file")

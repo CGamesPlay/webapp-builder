@@ -38,18 +38,18 @@ module.exports = class Fallback extends Builder
 
   enumerateProblems: (path) ->
     # Hijack options to get more verbosity
-    [ old_log, old_verbosity ] = [ console.log, @maker.options.verbose ]
+    [ old_log, old_verbosity ] = [ console.log, @manager.getOption 'verbose' ]
     reasons = []
     try
       # Do the resolution with high verbosity and logging
       console.log = (args...) ->
         reasons.push util.format args...
-      @maker.options.verbose = 9
-      @maker.resolve @target.name
+      @manager.setOption 'verbose', 9
+      @manager.resolve @target
     finally
       # Restore the old information
       console.log = old_log
-      @maker.options.verbose = old_verbosity
+      @manager.setOption 'verbose', old_verbosity
 
     reasons
 
@@ -57,7 +57,7 @@ module.exports = class Fallback extends Builder
     title = "404 - File not found"
     extra = ""
     if @target.name == 'index.html'
-      needed_file = path.join @maker.options.sourcePath, @target.name
+      needed_file = path.join @manager.getSourcePath(), @target.name
       title = "Welcome to webapp!"
       extra = "<h2>Create the file #{needed_file} to get started.</h2>"
 

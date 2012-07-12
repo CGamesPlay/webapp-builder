@@ -1,52 +1,47 @@
 Node = require './Node'
+fs = require 'fs'
 mime = require 'mime'
 path = require 'path'
 
 module.exports = class Builder
   @builderTypes: {}
 
-  # Usage:
-  # Builder.factory(TARGET, SOURCES, OPTIONS)
-  # Builder.factory(TARGET, SOURCES)
-  # Builder.factory(SOURCES, OPTIONS)
-  # Builder.factory(SOURCES)
-  @factory: (args...) ->
-    if args.length == 1
-      [ sources ] = args
-    else if args.length == 2 and (typeof args[1] == 'string' or
-                                 Array.isArray args[1])
-      [ target, sources ] = args
-    else if args.length == 2
-      [ sources, options ] = args
-    else
-      [ target, sources, options ] = args
-
-    maker = options?.maker ? require('./Maker').currentMaker
-
-    target = Node.resolve target, maker.getTargetPath if target?
-    sources = [ sources ] unless Array.isArray sources
-    sources = for source in sources
-      Node.resolve source, maker.getSourcePath
-    options ?= {}
-
-    options.maker = maker
-    options[k] = v for k, v of maker.options when not options[k]?
-
-    new @(target, sources, options)
-
   @registerBuilder: (b) ->
-    @builderTypes[b.name] = b.factory.bind b
+    @builderTypes[b.name] = b
     Builder[b.name] = b
 
-  constructor: (@target, @sources, @options) ->
-    @maker = @options.maker
-    @implied = @options.implied
+  # Usage:
+  # parseArguments([ TARGET, SOURCES, OPTIONS ])
+  # parseArguments([ TARGET, SOURCES ])
+  # parseArguments([ SOURCES, OPTIONS ])
+  # parseArguments([ SOURCES ])
+  #
+  # Returns: [ TARGET, SOURCES, OPTIONS ]
+  @parseArguments: (args) ->
+      if args.length == 1
+        [ sources ] = args
+      else if args.length == 2 and (typeof args[1] == 'string' or
+                                   Array.isArray args[1])
+        [ target, sources ] = args
+      else if args.length == 2
+        [ sources, options ] = args
+      else
+        [ target, sources, options ] = args
+      sources = [ sources ] unless Array.isArray sources
+      options ?= {}
+
+      [ target, sources, options ]
+
+  constructor: (args...) ->
+    [ @target, @sources, @options ] = Builder.parseArguments args
+    @manager = @options.manager
+
+    @target = Node.resolve @target, @manager.getTargetPath if @target?
+    @sources = (Node.resolve s, @manager.getSourcePath for s in @sources)
 
     @validateSources()
     @target = @inferTarget() unless @target?
     @name = @target.name
-
-    @maker?.registerBuilder @ unless @implied
 
   toString: ->
     "Builder.#{@constructor.name}(#{@target?.toString()}, " +
@@ -66,7 +61,7 @@ module.exports = class Builder
       @sources[0].name
 
     target = "#{basename}#{@constructor.targetSuffix}"
-    Node.resolve target, @maker.getTargetPath
+    Node.resolve target, @manager.getTargetPath
 
   getBuilderFor: (target_node) ->
     # If this Builder can't build this path, return null
@@ -85,7 +80,7 @@ module.exports = class Builder
       resolved_source = s.resolveUsing token
       if not resolved_source? or
           resolved_source instanceof Node and not resolved_source.exists()
-        if @maker.options.verbose >= 2
+        if @manager.getOption('verbose') >= 2
           console.log "#{@} can't build due to missing " +
             "#{path.relative process.cwd(), resolved_source.getPath()}."
         can_resolve = false
@@ -96,7 +91,6 @@ module.exports = class Builder
 
     options = {}
     options[k] = v for own k, v of @options
-    options.implied = true
 
     return new @constructor resolved_target, resolved_sources, options
 
