@@ -13,10 +13,10 @@ Builder.registerBuilder class AppCache extends Builder
     # Who needs efficiency? Not me!
     iterator = (source, next) ->
       source.getData (err, data) ->
-        next err if err?
+        return next err if err?
         next null, crypto.createHash('sha1').update(data).digest('hex')
     async.mapSeries @sources, iterator, (err, sub_hashes) =>
-      next err if err?
+      return next err if err?
 
       final_hash = crypto.createHash 'sha1'
       final_hash.update h for h in sub_hashes
