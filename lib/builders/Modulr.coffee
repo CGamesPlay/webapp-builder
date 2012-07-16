@@ -18,11 +18,18 @@ Builder.registerBuilder class Modulr extends Builder
     if @sources.length != 1
       throw new Error "#{@} requires exactly one source."
 
-  getData: (next) ->
-    main = @sources[0].getPath().substr 0,
-      @sources[0].getPath().lastIndexOf "."
+  invalidateCaches: ->
+    @cachedBuild = null
 
-    modulr.build main, @config, (err, builtSpec) ->
+  getData: (next) ->
+    return next null, @cachedBuild.output if @cachedBuild?
+
+    main_path = @sources[0].getPath()
+    # Bug in modulr means it won't accept file names
+    main = main_path.substr 0, main_path.lastIndexOf "."
+
+    modulr.build main, @config, (err, builtSpec) =>
       return next err if err?
 
+      @cachedBuild = builtSpec
       next null, builtSpec.output

@@ -48,6 +48,8 @@ module.exports = class Builder
     @target = @inferTarget() unless @target?
     @name = @target.name
 
+    @invalidateCaches()
+
   toString: ->
     "Builder.#{@constructor.name}(#{@target?.toString()}, " +
       "[ #{(s?.toString() for s in @sources).join ', '} ])"
@@ -107,6 +109,12 @@ module.exports = class Builder
       else if s.isAffectedBy node
         return true
     return false
+
+  # Fired on a builder when the cache must be invalidated. This will be called
+  # by the file watcher when a file is modified that affects this target (as
+  # determined by isAffectedBy). The default implementation does not support
+  # caching, so it is a NOP.
+  invalidateCaches: -> undefined
 
   getMimeType: ->
     mime.lookup @target.name
