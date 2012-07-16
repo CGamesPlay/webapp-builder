@@ -7,11 +7,13 @@ module.exports = class Node
     resolved_name = path.resolve resolved_prefix, name
     relative_name = path.relative resolved_prefix, resolved_name
     if relative_name[0..2] is '../'
-      throw new Error "#{name} is not within #{prefixGetter}"
+      throw new Error "#{name} is not within #{prefixGetter()}"
     relative_name
 
   @resolve: (name, prefixGetter) ->
-    return name if typeof name is 'object'
+    if name instanceof Node
+      name = name.name
+
     name = @nameWithinPrefix name, prefixGetter
     if name.indexOf('%') != -1
       return new Node.Wildcard name, prefixGetter

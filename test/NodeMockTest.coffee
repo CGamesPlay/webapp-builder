@@ -6,6 +6,7 @@ path = require 'path'
 expect = chai.expect
 
 describe "Node", ->
+  noPrefix = -> "."
   outPrefix = -> "out"
 
   describe "#nameWithinPrefix", ->
@@ -20,6 +21,14 @@ describe "Node", ->
     it "throws for invalid input", ->
       test = -> Node.nameWithinPrefix path.resolve("test.txt"), outPrefix
       expect(test).to.throw()
+
+  describe "#resolve", ->
+    it "resolves Nodes", ->
+      original = Node.resolve "test", outPrefix
+      processed = Node.resolve original, noPrefix
+      direct = Node.resolve "test", noPrefix
+      expect(processed.name).to.equal(original.name)
+      expect(processed.getPath()).to.equal(direct.getPath())
 
 describe "NodeMock", ->
   noPrefix = -> '.'

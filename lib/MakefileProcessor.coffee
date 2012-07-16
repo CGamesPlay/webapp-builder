@@ -21,14 +21,16 @@ module.exports = class MakefileProcessor
 
   # Autodetect a Makefile if it exists and source it.
   loadDefault: ->
-    for ext in [ '.coffee', '.js' ]
-      if path.existsSync "Makefile#{ext}"
-        @loadFile "Makefile#{ext}"
-        break
+    for ext in [ '.coffee', '.js' ] when path.existsSync "Makefile#{ext}"
+      @loadFile "Makefile#{ext}"
+      break
     @
 
   # Given the actual path to a Makefile, load it.
   loadFile: (path) ->
+    if @manager.getOption('verbose') >= 2
+      console.log "\nLoading file: #{path}"
+
     code = fs.readFileSync path, 'utf-8'
 
     if path.substr(-7) == ".coffee"

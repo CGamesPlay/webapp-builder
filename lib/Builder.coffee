@@ -1,6 +1,7 @@
 Node = require './Node'
 fs = require 'fs'
 mime = require 'mime'
+mkdirp = require 'mkdirp'
 path = require 'path'
 
 module.exports = class Builder
@@ -37,7 +38,11 @@ module.exports = class Builder
     @manager = @options.manager
 
     @target = Node.resolve @target, @manager.getTargetPath if @target?
-    @sources = (Node.resolve s, @manager.getSourcePath for s in @sources)
+    @sources = for source in @sources
+        if source instanceof Builder
+          source
+        else
+          Node.resolve source, @manager.getSourcePath
 
     @validateSources()
     @target = @inferTarget() unless @target?
@@ -80,7 +85,7 @@ module.exports = class Builder
       resolved_source = s.resolveUsing token
       if not resolved_source? or
           resolved_source instanceof Node and not resolved_source.exists()
-        if @manager.getOption('verbose') >= 2
+        if @manager.getOption('verbose') >= 1
           console.log "#{@} can't build due to missing " +
             "#{path.relative process.cwd(), resolved_source.getPath()}."
         can_resolve = false
@@ -108,6 +113,15 @@ module.exports = class Builder
 
   getData: ->
     throw new Error "#{@} must implement getData"
+
+  buildToFile: (next) ->
+    mkdirp path.dirname(@target.getPath()), (err) =>
+      return next err if err?
+
+      @getData (err, data) =>
+        return next err if err?
+
+        fs.writeFile @target.getPath(), data, next
 
   handleRequest: (req, res, next) ->
     @getData (err, data) =>
