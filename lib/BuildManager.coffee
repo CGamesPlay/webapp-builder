@@ -1,6 +1,6 @@
 Builder = require './Builder'
 MakefileProcessor = require './MakefileProcessor'
-Node = require './Node'
+{ FileSystem } = require './FileSystem'
 async = require 'async'
 path = require 'path'
 
@@ -18,7 +18,7 @@ module.exports = class BuildManager
     m = new BuildManager args
 
     if args.targets.length > 0
-      targets = (Node.resolve t, m.getTargetPath for t in args.targets)
+      targets = (m.fs.resolve t for t in args.targets)
     else
       throw new Error 'Not implemented yet. Explicit targets pls'
 
@@ -81,6 +81,7 @@ module.exports = class BuildManager
     async.auto tasks, jobs_finished
 
   constructor: (@externalOptions) ->
+    @fs = @externalOptions?.fileSystem ? new FileSystem
     @reset()
 
   reset: ->
@@ -92,11 +93,9 @@ module.exports = class BuildManager
       @makefileProcessor.loadFile @getOption 'file'
     else
       @makefileProcessor.loadDefault()
+    @fs.setVariantDir @getOption('targetPath'), @getOption('sourcePath')
     if @getOption('verbose') >= 2
       console.log "Done loading makefiles.\n"
-
-  getSourcePath: => @getOption 'sourcePath'
-  getTargetPath: => @getOption 'targetPath'
 
   getOption: (opt) ->
     @effectiveOptions[opt] ?
@@ -113,9 +112,8 @@ module.exports = class BuildManager
     @
 
   resolve: (path) ->
-    for try_builder in @builders
-      actual_builder = try_builder.getBuilderFor path
-      return actual_builder if actual_builder?
+    for builder in @builders
+      return builder if builder.target.equals path
     null
 
   # Construct a dependency tree suitable for use with async#auto.
@@ -124,14 +122,13 @@ module.exports = class BuildManager
     queueDependencies = (target) =>
       b = @resolve target
       if b?
-        task = tasks[target.name] ?= []
+        task = tasks[target.getPath()] ?= []
         for s in b.sources when s instanceof Builder
-          task.push s.target.name
+          task.push s.target.getPath()
           queueDependencies s.target
         task.push task_generator b if task_generator?
       else
-        target_name = path.relative process.cwd(), target.getPath()
-        throw new Error "No builders available for #{target_name}"
+        throw new Error "No builders available for #{target.getPath()}"
 
     queueDependencies t for t in targets
     tasks

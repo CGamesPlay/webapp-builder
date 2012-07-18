@@ -1,5 +1,5 @@
 Builder = require '../Builder'
-Node = require '../Node'
+{ FileSystem } = require '../FileSystem'
 
 Builder.registerBuilder class Copy extends Builder
   toString: ->
@@ -14,9 +14,10 @@ Builder.registerBuilder class Copy extends Builder
 
   inferTarget: ->
     return super if @sources[0] instanceof Builder
-    Node.resolve @sources[0], @manager.getTargetPath
+    @manager.fs.resolve @sources[0]
 
   handleRequest: (req, res, next) ->
+    throw new Error "Not written yet"
     if @sources[0] instanceof Node.Dir and req.url.substr(-1) != "/"
       # For directories, redirect to the trailing / form. This will cause the
       # server to realize it is dealing with a directory and serve index.html

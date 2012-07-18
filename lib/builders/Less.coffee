@@ -1,5 +1,4 @@
 Builder = require '../Builder'
-Node = require '../Node'
 fs = require 'fs'
 path = require 'path'
 less = require 'less'

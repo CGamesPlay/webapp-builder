@@ -1,5 +1,4 @@
 Builder = require '../Builder'
-Node = require '../Node'
 path = require 'path'
 modulr = require 'modulr'
 

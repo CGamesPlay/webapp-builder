@@ -1,7 +1,6 @@
 Builder = require './Builder'
 BuildManager = require './BuildManager'
 CoffeeScript = require 'coffee-script'
-Node = require './Node'
 fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
@@ -54,7 +53,6 @@ module.exports = class MakefileProcessor
       builder
 
     env[k] = wrap_factory v for k, v of Builder.builderTypes
-    env.Node = Node
     env.SetOptions = @setBuilderOptions
     env.args = @options
     @

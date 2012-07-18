@@ -1,52 +1,52 @@
 Builder = require '../lib/Builder'
 BuildManager = require '../lib/BuildManager'
-NodeMock = require './mock/NodeMock'
+{ FileSystemMock } = require './mock/FileSystemMock'
 chai = require 'chai'
 
 expect = chai.expect
 
 describe 'BuildManager', ->
-  noPrefix = -> '.'
-  NodeMock.use
-    "test.txt": "It works!"
-
   it "instantiates", ->
     new BuildManager
     expect(-> new BuildManager).to.not.throw()
 
   beforeEach ->
+    @fs = new FileSystemMock
+      "test.txt": "It works!"
+      "index.html": "WOOOOO"
     @manager = new BuildManager
       disableBuiltin: yes
+      fileSystem: @fs
       sourcePath: '.'
 
-    @wildcard = new Builder.Copy '%%',
+    @some_file = new Builder.Copy 'index.html',
       manager: @manager
-    @some_file = new Builder.Copy 'index.html'
+    @another_file = new Builder.Copy 'test.txt',
       manager: @manager
     @cache_everything = new Builder.AppCache 'app.cache', @some_file,
       manager: @manager
 
     @manager
-      .register(@wildcard)
       .register(@some_file)
+      .register(@another_file)
       .register(@cache_everything)
 
   describe "#resolve", ->
     it "identifies a target", ->
-      target = NodeMock.resolve "app.cache", @manager.getTargetPath
+      target = @fs.resolve "app.cache"
       builder = @manager.resolve target
       expect(builder).to.exist
       expect(builder).to.equal(@cache_everything)
 
   describe "#constructDependencyTreeFor", ->
     it "handles a simple target", ->
-      target = NodeMock.resolve "test.txt", @manager.getTargetPath
+      target = @fs.resolve "index.html"
       tasks = @manager.constructDependencyTreeFor [ target ]
       expect(tasks).to.deep.equal
-        'test.txt': []
+        'index.html': []
 
     it "handles a composite target", ->
-      target = NodeMock.resolve "app.cache", @manager.getTargetPath
+      target = @fs.resolve "app.cache"
       tasks = @manager.constructDependencyTreeFor [ target ]
       expect(tasks).to.deep.equal
         'app.cache': [ 'index.html' ]
@@ -54,8 +54,8 @@ describe 'BuildManager', ->
 
     it "handles multiple targets", ->
       targets = [
-        NodeMock.resolve "app.cache", @manager.getTargetPath
-        NodeMock.resolve "test.txt", @manager.getTargetPath
+        @fs.resolve "app.cache"
+        @fs.resolve "test.txt"
       ]
       tasks = @manager.constructDependencyTreeFor targets
       expect(tasks).to.deep.equal
@@ -65,9 +65,8 @@ describe 'BuildManager', ->
 
   describe "#findTargetsAffectedBy", ->
     it "identifies all targets", ->
-      file = NodeMock.resolve "index.html", noPrefix
+      file = @fs.resolve "index.html"
       targets = @manager.findTargetsAffectedBy file
-      expect(targets).to.have.length(3)
-      expect(targets).to.contain @wildcard
+      expect(targets).to.have.length(2)
       expect(targets).to.contain @some_file
       expect(targets).to.contain @cache_everything

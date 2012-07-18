@@ -1,4 +1,4 @@
-Node = require './Node'
+{ FileSystem } = require './FileSystem'
 fs = require 'fs'
 mime = require 'mime'
 mkdirp = require 'mkdirp'
@@ -37,12 +37,12 @@ module.exports = class Builder
     [ @target, @sources, @options ] = Builder.parseArguments args
     @manager = @options.manager
 
-    @target = Node.resolve @target, @manager.getTargetPath if @target?
+    @target = @manager.fs.resolve @target if @target?
     @sources = for source in @sources
         if source instanceof Builder
           source
         else
-          Node.resolve source, @manager.getSourcePath
+          @manager.fs.resolve source
 
     @validateSources()
     @target = @inferTarget() unless @target?
@@ -61,51 +61,19 @@ module.exports = class Builder
     unless @constructor.targetSuffix?
       throw new Error "#{@} cannot infer target filename"
 
-    idx = @sources[0].name.lastIndexOf '.'
+    idx = @sources[0].getPath().lastIndexOf '.'
     basename = if idx != -1
-      @sources[0].name.substr(0, idx)
+      @sources[0].getPath().substr(0, idx)
     else
-      @sources[0].name
+      @sources[0].getPath()
 
     target = "#{basename}#{@constructor.targetSuffix}"
-    Node.resolve target, @manager.getTargetPath
-
-  getBuilderFor: (target_node) ->
-    # If this Builder can't build this path, return null
-    return null unless @target.nameMatches target_node.name
-    if !(@target instanceof Node.Wildcard)
-      return @
-
-    else
-      # We have to resolve the wildcards to see if we can build this
-      token = @target.extractWildcard target_node.name
-      @resolveUsing token
-
-  resolveUsing: (token) ->
-    can_resolve = true
-    resolved_sources = for s in @sources
-      resolved_source = s.resolveUsing token
-      if not resolved_source? or
-          resolved_source instanceof Node and not resolved_source.exists()
-        if @manager.getOption('verbose') >= 1
-          console.log "#{@} can't build due to missing " +
-            "#{path.relative process.cwd(), resolved_source.getPath()}."
-        can_resolve = false
-        break
-      resolved_source
-    return null unless can_resolve
-    resolved_target = @target.resolveUsing token
-
-    options = {}
-    options[k] = v for own k, v of @options
-
-    return new @constructor resolved_target, resolved_sources, options
+    @manager.fs.resolve target
 
   isAffectedBy: (node) ->
     for s in @sources
-      if s instanceof Node
-        if s.refersTo node
-          return true
+      if s instanceof FileSystem.Node
+        return s.getPath() is node.getPath()
       else if s.isAffectedBy node
         return true
     return false

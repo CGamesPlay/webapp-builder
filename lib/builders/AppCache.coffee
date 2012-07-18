@@ -1,5 +1,4 @@
 Builder = require '../Builder'
-Node = require '../Node'
 async = require 'async'
 crypto = require 'crypto'
 fs = require 'fs'

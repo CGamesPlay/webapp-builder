@@ -1,9 +1,9 @@
 express = require 'express'
 BuildManager = require './BuildManager'
-Node = require './Node'
 Fallback = require './builders/Fallback'
 
 exports.middleware = (args) ->
+  throw new Error "Not ready yet :'("
   args.runtime = 'server'
   manager = new BuildManager args
 
@@ -16,7 +16,7 @@ exports.middleware = (args) ->
     request_url += "index.html" if request_url.substr(-1) == "/"
     request_url = request_url.substring 1
 
-    target = Node.resolve request_url, manager.getTargetPath
+    target = manager.fs.resolve request_url
     builder = manager.resolve target
 
     if builder?
