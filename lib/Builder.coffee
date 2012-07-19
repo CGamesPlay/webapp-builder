@@ -1,7 +1,6 @@
 { FileSystem } = require './FileSystem'
 fs = require 'fs'
 mime = require 'mime'
-mkdirp = require 'mkdirp'
 path = require 'path'
 
 module.exports = class Builder
@@ -91,13 +90,13 @@ module.exports = class Builder
     throw new Error "#{@} must implement getData"
 
   buildToFile: (next) ->
-    mkdirp path.dirname(@target.getPath()), (err) =>
+    @manager.fs.mkdirp path.dirname(@target.getPath()), (err) =>
       return next err if err?
 
       @getData (err, data) =>
         return next err if err?
 
-        fs.writeFile @target.getPath(), data, next
+        @target.writeFile data, next
 
   handleRequest: (req, res, next) ->
     @getData (err, data) =>

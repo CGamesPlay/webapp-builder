@@ -1,4 +1,5 @@
 { EventEmitter } = require 'events'
+mkdirp = require 'mkdirp'
 path = require 'path'
 
 exports.FileSystem = class FileSystem
@@ -15,8 +16,13 @@ exports.FileSystem = class FileSystem
     else
       filename
 
+  mkdirp: (dir, next) ->
+    mkdirp dir, next
+
 class FileSystem.Node extends EventEmitter
   constructor: (@fs, @filename) ->
+
+  toString: -> @getPath()
 
   getPath: -> @filename
   getReadablePath: ->
@@ -28,7 +34,11 @@ class FileSystem.Node extends EventEmitter
   equals: (other) ->
     @getPath() is other.getPath()
 
-  toString: -> @getPath()
+  getData: (next) ->
+    next new Error "Not implemented"
+
+  writeFile: (data, next) ->
+    next new Error "Not implemented"
 
 exports.FileNotFoundException = class FileNotFoundException extends Error
   constructor: (@filename) ->

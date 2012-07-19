@@ -17,13 +17,12 @@ describe 'BuildManager', ->
     @manager = new BuildManager
       disableBuiltin: yes
       fileSystem: @fs
-      sourcePath: '.'
 
-    @some_file = new Builder.Copy 'index.html',
+    @some_file = new Builder.Copy 'out/index.html',
       manager: @manager
-    @another_file = new Builder.Copy 'test.txt',
+    @another_file = new Builder.Copy 'out/test.txt',
       manager: @manager
-    @cache_everything = new Builder.AppCache 'app.cache', @some_file,
+    @cache_everything = new Builder.AppCache 'out/app.cache', @some_file,
       manager: @manager
 
     @manager
@@ -31,41 +30,45 @@ describe 'BuildManager', ->
       .register(@another_file)
       .register(@cache_everything)
 
+  describe "#make", ->
+    it "makes simple targets", (done) ->
+      @manager.make 'out/index.html', done
+
   describe "#resolve", ->
     it "identifies a target", ->
-      target = @fs.resolve "app.cache"
+      target = @fs.resolve "out/app.cache"
       builder = @manager.resolve target
       expect(builder).to.exist
       expect(builder).to.equal(@cache_everything)
 
   describe "#constructDependencyTreeFor", ->
     it "handles a simple target", ->
-      target = @fs.resolve "index.html"
+      target = @fs.resolve "out/index.html"
       tasks = @manager.constructDependencyTreeFor [ target ]
       expect(tasks).to.deep.equal
-        'index.html': []
+        'out/index.html': []
 
     it "handles a composite target", ->
-      target = @fs.resolve "app.cache"
+      target = @fs.resolve "out/app.cache"
       tasks = @manager.constructDependencyTreeFor [ target ]
       expect(tasks).to.deep.equal
-        'app.cache': [ 'index.html' ]
-        'index.html': []
+        'out/app.cache': [ 'out/index.html' ]
+        'out/index.html': []
 
     it "handles multiple targets", ->
       targets = [
-        @fs.resolve "app.cache"
-        @fs.resolve "test.txt"
+        @fs.resolve "out/app.cache"
+        @fs.resolve "out/test.txt"
       ]
       tasks = @manager.constructDependencyTreeFor targets
       expect(tasks).to.deep.equal
-        'app.cache': [ 'index.html' ]
-        'index.html': []
-        'test.txt': []
+        'out/app.cache': [ 'out/index.html' ]
+        'out/index.html': []
+        'out/test.txt': []
 
   describe "#findTargetsAffectedBy", ->
     it "identifies all targets", ->
-      file = @fs.resolve "index.html"
+      file = @fs.resolve "out/index.html"
       targets = @manager.findTargetsAffectedBy file
       expect(targets).to.have.length(2)
       expect(targets).to.contain @some_file

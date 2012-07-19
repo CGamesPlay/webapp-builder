@@ -56,10 +56,6 @@ commands =
     server = require './server'
     server.standalone args
   build: ->
-    # When called from the command-line, targets refers to files, which are
-    # rooted in . rather than in targetPath. We need to fully resolve the paths
-    # to work around that.
-    args.targets = (path.resolve t for t in args.targets)
     BuildManager = require './BuildManager'
     BuildManager.make args, (success) ->
       process.exit (if success then 0 else 1)

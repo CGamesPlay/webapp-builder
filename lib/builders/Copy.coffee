@@ -2,12 +2,6 @@ Builder = require '../Builder'
 { FileSystem } = require '../FileSystem'
 
 Builder.registerBuilder class Copy extends Builder
-  toString: ->
-    if @target?.name is @sources[0].name
-      "Copy(#{@target?.toString()})"
-    else
-      "Copy(#{@target?.toString()}, #{@sources[0]})"
-
   validateSources: ->
     if @sources.length != 1
       throw new Error "#{@} requires exactly one source."
@@ -29,4 +23,8 @@ Builder.registerBuilder class Copy extends Builder
       super req, res, next
 
   getData: (next) ->
-    @sources[0].getData next
+    # Copy *must* get data from the variant directory, otherwise the whole copy
+    # thing doesn't make sense.
+    variant_source = @manager.fs.getVariantPath @sources[0].getPath()
+    real_source = @manager.fs.resolve variant_source
+    real_source.getData next

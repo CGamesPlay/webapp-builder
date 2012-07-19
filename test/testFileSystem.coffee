@@ -16,6 +16,21 @@ describe "FileSystem", ->
       path = @fs.getVariantPath "index.html"
       expect(path).to.equal("index.html")
 
+describe "FileSystemMock", ->
+  beforeEach ->
+    @fs = new FileSystemMock {}
+
+  describe "#mkdirp", ->
+    it "makes faux directories", (done) ->
+      @fs.mkdirp 'path/to/test', (err) =>
+        return done err if err?
+        file = @fs.getFile '/'
+        expect(file).to.deep.equal
+          path:
+            to:
+              test: {}
+        done null
+
 describe "FileSystemMock.Node", ->
   beforeEach ->
     @fs = new FileSystemMock
