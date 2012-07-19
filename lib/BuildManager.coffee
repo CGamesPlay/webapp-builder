@@ -1,4 +1,4 @@
-{ Builder } = require './Builder'
+{ Builder, MissingDependencyError } = require './Builder'
 MakefileProcessor = require './MakefileProcessor'
 { FileSystem } = require './FileSystem'
 async = require 'async'
@@ -10,14 +10,6 @@ module.exports = class BuildManager
     sourcePath: '.'
     targetPath: 'out'
     verbose: 0
-    disableBuiltin: no
-
-  # Interface designed to be used from the cli. Read the makefile, build the
-  # targets.
-  @make: (args, finished) ->
-    args.runtime = 'build'
-    m = new BuildManager args
-    m.make args.targets, finished
 
   constructor: (@externalOptions) ->
     @fs = @externalOptions?.fileSystem ? new FileSystem
@@ -35,8 +27,7 @@ module.exports = class BuildManager
 
     @effectiveOptions = {}
     @builders = []
-    @makefileProcessor = new MakefileProcessor @,
-      disableBuiltin: @getOption 'disableBuiltin'
+    @makefileProcessor = new MakefileProcessor @
     if @getOption('file')?
       @makefileProcessor.loadFile @getOption 'file'
     else
@@ -60,8 +51,19 @@ module.exports = class BuildManager
     @queue.push builder
 
   processQueueJob: (builder, done) =>
+    if @getOption('verbose') > 0
+      console.log "Building #{builder.getPath()} using #{builder}"
     builder.doBuild()
-    builder.once Builder.BUILD_FINISHED, -> done()
+    builder.once Builder.BUILD_FINISHED, (b, err) ->
+      if err instanceof MissingDependencyError
+        console.error "Unable to build #{b.getPath()} due to " +
+          "previous failures."
+      else if err
+        console.error "Error while building #{b.getPath()}"
+        console.error err.stack
+        console.error ""
+
+      done()
 
   register: (builder) ->
     @builders.unshift(builder)
@@ -71,11 +73,11 @@ module.exports = class BuildManager
     @
 
   make: (targets, done) ->
-    if targets?
+    if not targets? or targets.length == 0
+      targets = @builders
+    else
       targets = [ targets ] unless Array.isArray targets
       targets = (@resolve @fs.resolve t for t in targets)
-    else
-      targets = @builders
 
     results = {}
     waiting_on = targets.length
@@ -83,7 +85,8 @@ module.exports = class BuildManager
       t.queueBuild()
       t.once Builder.BUILD_FINISHED, (b, err) =>
         waiting_on -= 1
-        results[t.target.getPath()] = err
+        results[b.getPath()] = err
+
         if waiting_on is 0
           done results
     @

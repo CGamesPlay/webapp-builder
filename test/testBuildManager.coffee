@@ -15,7 +15,6 @@ describe 'BuildManager', ->
       "test.txt": "It works!"
       "index.html": "WOOOOO"
     @manager = new BuildManager
-      disableBuiltin: yes
       fileSystem: @fs
 
     @some_file = new Builder.Copy 'out/index.html',

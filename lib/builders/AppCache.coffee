@@ -32,7 +32,8 @@ Builder.registerBuilder class AppCache extends Builder
     """
 
     for s in @sources
-      document += path.relative(path.dirname(@target.name), s.name) + "\n"
+      relative_path = path.relative path.dirname(@getPath()), s.getPath()
+      document += relative_path + "\n"
 
     document += """
 

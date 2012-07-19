@@ -57,7 +57,10 @@ commands =
     server.standalone args
   build: ->
     BuildManager = require './BuildManager'
-    BuildManager.make args, (success) ->
+    m = new BuildManager args
+    m.make args.targets, (results) ->
+      success = yes
+      success = no for err in results when err?
       process.exit (if success then 0 else 1)
 
 commands[args.command]()

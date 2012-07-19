@@ -10,12 +10,6 @@ module.exports = class MakefileProcessor
     @vmContext = vm.createContext()
 
     @prepareEnvironment @vmContext
-    @loadBuiltin() unless @options.disableBuiltin
-    @
-
-  # Load the built-in Makefile.
-  loadBuiltin: ->
-    @loadFile path.resolve __dirname, 'Makefile.default.coffee'
     @
 
   # Autodetect a Makefile if it exists and source it.

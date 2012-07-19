@@ -17,7 +17,7 @@ Builder.registerBuilder class Less extends Builder
 
   getData: (next) ->
     parser = new less.Parser @config
-    fs.readFile @sources[0].getPath(), 'utf-8', (err, data) ->
+    @sources[0].getData (err, data) ->
       return next err if err?
 
       parser.parse data, (err, tree) ->

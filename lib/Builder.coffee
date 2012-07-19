@@ -60,6 +60,8 @@ exports.Builder = class Builder extends EventEmitter
   toString: ->
     "Builder.#{@constructor.name}(#{@target?.toString()})"
 
+  getPath: -> @target.getPath()
+
   validateSources: ->
     @
 
@@ -82,11 +84,11 @@ exports.Builder = class Builder extends EventEmitter
     return unless @isActive
 
     if err?
-      @waitingOn[dep.target.getPath()] = yes
+      @waitingOn[dep.getPath()] = yes
       @emit Builder.BUILD_FINISHED, @, new MissingDependencyError @, dep, err
       return
 
-    delete @waitingOn[dep.target.getPath()]
+    delete @waitingOn[dep.getPath()]
 
     pending = Object.keys(@waitingOn).length
     if pending is 0
@@ -108,7 +110,7 @@ exports.Builder = class Builder extends EventEmitter
     @waitingOn = {}
 
     for s in @sources when s instanceof Builder
-      @waitingOn[s.target.getPath()] = yes
+      @waitingOn[s.getPath()] = yes
       s.queueBuild()
 
     # Fire off a check in case we are already up to date (or have no deps)
@@ -119,7 +121,7 @@ exports.Builder = class Builder extends EventEmitter
       @emit Builder.BUILD_FINISHED, @, err
 
   getMimeType: ->
-    mime.lookup @target.name
+    mime.lookup @getPath()
 
   getData: (next) ->
     next new Error "#{@} does not implement getData"

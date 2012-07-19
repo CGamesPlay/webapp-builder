@@ -12,7 +12,6 @@ describe 'Builder', ->
       "something.coffee": "coffeescript"
 
     @manager = new BuildManager
-      disableBuiltin: true
       fileSystem: @fs
       sourcePath: '.'
       targetPath: 'out'
@@ -32,7 +31,7 @@ describe 'Builder', ->
         manager: @manager
 
     it "works", ->
-      expect(@builder.target.getPath()).to.equal("something.js")
+      expect(@builder.getPath()).to.equal("something.js")
 
     it "handles suffixes", ->
       target = @builder.inferTarget()

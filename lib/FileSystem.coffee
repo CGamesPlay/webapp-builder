@@ -1,4 +1,5 @@
 { EventEmitter } = require 'events'
+fs = require 'fs'
 mkdirp = require 'mkdirp'
 path = require 'path'
 
@@ -34,11 +35,14 @@ class FileSystem.Node extends EventEmitter
   equals: (other) ->
     @getPath() is other.getPath()
 
+  exists: ->
+    path.existsSync @getPath()
+
   getData: (next) ->
-    next new Error "Not implemented"
+    fs.readFile @getReadablePath(), 'utf-8', next
 
   writeFile: (data, next) ->
-    next new Error "Not implemented"
+    fs.writeFile @getPath(), data, next
 
 exports.FileNotFoundException = class FileNotFoundException extends Error
   constructor: (@filename) ->
