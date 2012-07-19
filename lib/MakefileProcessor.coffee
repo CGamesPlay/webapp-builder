@@ -1,4 +1,4 @@
-Builder = require './Builder'
+{ Builder } = require './Builder'
 BuildManager = require './BuildManager'
 CoffeeScript = require 'coffee-script'
 fs = require 'fs'

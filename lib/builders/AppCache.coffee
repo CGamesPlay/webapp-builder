@@ -1,4 +1,4 @@
-Builder = require '../Builder'
+{ Builder } = require '../Builder'
 async = require 'async'
 crypto = require 'crypto'
 fs = require 'fs'

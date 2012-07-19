@@ -1,4 +1,4 @@
-Builder = require '../lib/Builder'
+{ Builder } = require '../lib/Builder'
 BuildManager = require '../lib/BuildManager'
 { FileSystemMock } = require './mock/FileSystemMock'
 chai = require 'chai'
@@ -30,9 +30,31 @@ describe 'BuildManager', ->
       .register(@another_file)
       .register(@cache_everything)
 
+  describe "#reset", ->
+    it "removes READY_TO_BUILD listeners", ->
+      @manager.reset()
+      expect(@some_file.listeners Builder.READY_TO_BUILD).to.be.length 0
+
+  describe "#register", ->
+    it "listens to READY_TO_BUILD", ->
+      expect(@some_file.listeners Builder.READY_TO_BUILD).to.be.length 1
+
   describe "#make", ->
     it "makes simple targets", (done) ->
-      @manager.make 'out/index.html', done
+      @manager.make 'out/index.html', (results) =>
+        return done err for t, err of results when err?
+
+        data = @fs.getFile 'out/index.html'
+        expect(data).to.equal "WOOOOO"
+        done()
+
+    it "makes complex targets", (done) ->
+      @manager.make 'out/app.cache', (results) =>
+        return done err for t, err of results when err?
+
+        data = @fs.getFile 'out/index.html'
+        expect(data).to.equal "WOOOOO"
+        done()
 
   describe "#resolve", ->
     it "identifies a target", ->
@@ -40,31 +62,6 @@ describe 'BuildManager', ->
       builder = @manager.resolve target
       expect(builder).to.exist
       expect(builder).to.equal(@cache_everything)
-
-  describe "#constructDependencyTreeFor", ->
-    it "handles a simple target", ->
-      target = @fs.resolve "out/index.html"
-      tasks = @manager.constructDependencyTreeFor [ target ]
-      expect(tasks).to.deep.equal
-        'out/index.html': []
-
-    it "handles a composite target", ->
-      target = @fs.resolve "out/app.cache"
-      tasks = @manager.constructDependencyTreeFor [ target ]
-      expect(tasks).to.deep.equal
-        'out/app.cache': [ 'out/index.html' ]
-        'out/index.html': []
-
-    it "handles multiple targets", ->
-      targets = [
-        @fs.resolve "out/app.cache"
-        @fs.resolve "out/test.txt"
-      ]
-      tasks = @manager.constructDependencyTreeFor targets
-      expect(tasks).to.deep.equal
-        'out/app.cache': [ 'out/index.html' ]
-        'out/index.html': []
-        'out/test.txt': []
 
   describe "#findTargetsAffectedBy", ->
     it "identifies all targets", ->

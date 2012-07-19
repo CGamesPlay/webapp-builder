@@ -1,4 +1,4 @@
-Builder = require './Builder'
+{ Builder } = require './Builder'
 MakefileProcessor = require './MakefileProcessor'
 { FileSystem } = require './FileSystem'
 async = require 'async'
@@ -21,9 +21,18 @@ module.exports = class BuildManager
 
   constructor: (@externalOptions) ->
     @fs = @externalOptions?.fileSystem ? new FileSystem
+    @queue = async.queue @processQueueJob, 1
     @reset()
 
   reset: ->
+    if @queue.length() isnt 0
+      throw new Error "Attempted to reset BuildManager while builds are in " +
+        "progress."
+    # Remove listeners for builders
+    if @builders?
+      for b in @builders
+        b.removeListener Builder.READY_TO_BUILD, @builderIsReady
+
     @effectiveOptions = {}
     @builders = []
     @makefileProcessor = new MakefileProcessor @,
@@ -32,7 +41,10 @@ module.exports = class BuildManager
       @makefileProcessor.loadFile @getOption 'file'
     else
       @makefileProcessor.loadDefault()
+
     @fs.setVariantDir @getOption('targetPath'), @getOption('sourcePath')
+    @queue.concurrency = @getOption 'concurrency'
+
     if @getOption('verbose') >= 2
       console.log "Done loading makefiles.\n"
 
@@ -44,98 +56,42 @@ module.exports = class BuildManager
   setOption: (opt, value) ->
     @effectiveOptions[opt] = value
 
-  make: (targets, done) ->
-    targets = [ targets ] unless Array.isArray targets
-    if targets.length > 0
-      targets = (@fs.resolve t for t in targets)
-    else
-      throw new Error 'Not implemented yet. Explicit targets pls'
+  builderIsReady: (builder) =>
+    @queue.push builder
 
-    generate_task = (builder) -> (next, results) ->
-      task =
-        builder: builder
-        dependencies: results
-      queue.push task, next
-
-    process_queue = (task, next) =>
-      builder = task.builder
-
-      # Verify all sources built correctly
-      for s, i in builder.sources when s instanceof Builder
-        dep = task.dependencies[s.target.name]
-        if dep.error
-          return next null,
-            builder: builder
-            error: true
-
-      if @getOption('verbose') is 1
-        console.log "Building #{builder.target.name}..."
-      else if @getOption('verbose') >= 2
-        console.log "Building #{builder.target.name} using #{builder}..."
-
-      # Perform this task
-      builder.buildToFile (err, result) =>
-        if err?
-          console.error "While building #{builder}:"
-          if @getOption('verbose') >= 2
-            console.error "Using: #{builder}"
-          console.error "  #{err.stack}"
-
-        next null,
-          builder: builder
-          error: err
-
-    jobs_finished = (err, results) ->
-      # Exceptions should be handled by the async queue so if we get one here
-      # it's unexpected.
-      throw err if err?
-
-      error = null
-      error ?= target.error for name, target of results
-      console.error "Build failed due to errors" if error?
-
-      done? error
-
-    # Create a queue for doing the actual building
-    queue = async.queue process_queue, @getOption('concurrency')
-
-    # Construct a dependency graph
-    try
-      tasks = @constructDependencyTreeFor targets, generate_task
-    catch error
-      console.error "#{error.name}: #{error.message}"
-      return done error
-
-    # And start everything going
-    async.auto tasks, jobs_finished
+  processQueueJob: (builder, done) =>
+    builder.doBuild()
+    builder.once Builder.BUILD_FINISHED, -> done()
 
   register: (builder) ->
     @builders.unshift(builder)
+    builder.on Builder.READY_TO_BUILD, @builderIsReady
     if @getOption('verbose') >= 2
       console.log "Added #{builder}"
+    @
+
+  make: (targets, done) ->
+    if targets?
+      targets = [ targets ] unless Array.isArray targets
+      targets = (@resolve @fs.resolve t for t in targets)
+    else
+      targets = @builders
+
+    results = {}
+    waiting_on = targets.length
+    for t in targets
+      t.queueBuild()
+      t.once Builder.BUILD_FINISHED, (b, err) =>
+        waiting_on -= 1
+        results[t.target.getPath()] = err
+        if waiting_on is 0
+          done results
     @
 
   resolve: (path) ->
     for builder in @builders
       return builder if builder.target.equals path
     null
-
-  # Construct a dependency tree suitable for use with async#auto.
-  constructDependencyTreeFor: (targets, task_generator) ->
-    tasks = {}
-    queueDependencies = (target) =>
-      b = @resolve target
-      if b?
-        task = tasks[target.getPath()] ?= []
-        for s in b.sources when s instanceof Builder
-          task.push s.target.getPath()
-          queueDependencies s.target
-        task.push task_generator b if task_generator?
-      else
-        throw new Error "No builders available for #{target.getPath()}"
-
-    queueDependencies t for t in targets
-    tasks
 
   findTargetsAffectedBy: (path) ->
     b for b in @builders when b.isAffectedBy path

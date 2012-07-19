@@ -1,4 +1,4 @@
-Builder = require '../Builder'
+{ Builder } = require '../Builder'
 { FileSystem } = require '../FileSystem'
 
 Builder.registerBuilder class Copy extends Builder
