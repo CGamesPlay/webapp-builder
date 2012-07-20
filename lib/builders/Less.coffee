@@ -21,7 +21,7 @@ Builder.registerBuilder class Less extends Builder
     @sources[0].getData (err, data) ->
       return next err if err?
 
-      parser.parse data, (err, tree) ->
+      parser.parse data.toString(), (err, tree) ->
         return next err if err?
 
         next null, tree.toCSS()

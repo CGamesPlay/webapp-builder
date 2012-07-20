@@ -24,7 +24,7 @@ Builder.registerBuilder class AppCache extends Builder
 
   generateDocument: (options) ->
     document = """
-    CACHE_MANIFEST
+    CACHE MANIFEST
     # Cache key: #{options.cache_key}
 
     CACHE:

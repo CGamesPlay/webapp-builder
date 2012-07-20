@@ -11,9 +11,9 @@ exports.FileSystem = class FileSystem
     new @constructor.Node @, filename
 
   getVariantPath: (filename) ->
-    within_dir = path.relative @writePath, filename
-    if filename.substr(0, 2) != '..'
-      path.join @fallbackPath, within_dir
+    relative_to_write = path.relative @writePath, filename
+    if relative_to_write.substr(0, 2) != '..'
+      path.join @fallbackPath, relative_to_write
     else
       filename
 
@@ -29,7 +29,7 @@ class FileSystem.Node extends EventEmitter
   getReadablePath: ->
     return @getPath() if @exists()
     variant = @fs.resolve @fs.getVariantPath @getPath()
-    throw new FileNotFoundException @getPath() unless variant.exists()
+    throw new FileNotFoundException variant.getPath() unless variant.exists()
     return variant.getPath()
 
   equals: (other) ->
@@ -38,8 +38,11 @@ class FileSystem.Node extends EventEmitter
   exists: ->
     path.existsSync @getPath()
 
+  getStat: ->
+    fs.statSync @getReadablePath()
+
   getData: (next) ->
-    fs.readFile @getReadablePath(), 'utf-8', next
+    fs.readFile @getReadablePath(), next
 
   writeFile: (data, next) ->
     fs.writeFile @getPath(), data, next

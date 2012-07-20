@@ -3,8 +3,10 @@
 
 Builder.registerBuilder class Copy extends Builder
   @createBuilderFor: (manager, target) ->
-    target.getReadablePath()
-    return new Copy target, [ target ],
+    variant_path = manager.fs.getVariantPath target.getPath()
+    variant_node = manager.fs.resolve variant_path
+    variant_node.getReadablePath()
+    return new Copy target, [ variant_node ],
       manager: manager
 
   validateSources: ->
@@ -14,8 +16,7 @@ Builder.registerBuilder class Copy extends Builder
   inferTarget: -> @sources[0]
 
   handleRequest: (req, res, next) ->
-    throw new Error "Not written yet"
-    if @sources[0] instanceof Node.Dir and req.url.substr(-1) != "/"
+    if @sources[0].getStat().isDirectory() and req.url.substr(-1) != "/"
       # For directories, redirect to the trailing / form. This will cause the
       # server to realize it is dealing with a directory and serve index.html
       # appropriately.
@@ -28,6 +29,8 @@ Builder.registerBuilder class Copy extends Builder
   getData: (next) ->
     # Copy *must* get data from the variant directory, otherwise the whole copy
     # thing doesn't make sense.
-    variant_source = @manager.fs.getVariantPath @sources[0].getPath()
-    real_source = @manager.fs.resolve variant_source
-    real_source.getData next
+    variant_path = @manager.fs.getVariantPath @sources[0].getPath()
+    if variant_path is @target.getPath()
+      throw new Error "#{@}: source and destination identical."
+    variant_node = @manager.fs.resolve variant_path
+    variant_node.getData next

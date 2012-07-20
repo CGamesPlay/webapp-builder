@@ -186,7 +186,8 @@ exports.Builder = class Builder extends EventEmitter
   handleRequest: (req, res, next) ->
     @getData (err, data) =>
       return next err if err?
-      res.setHeader 'Content-Type', @getMimeType
+      res.setHeader 'Content-Type', @getMimeType()
+      res.setHeader 'Content-Length', data.length
       res.write data
       res.end()
 

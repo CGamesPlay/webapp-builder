@@ -7,6 +7,10 @@ util = require 'util'
 # middleware. This Builder will always build a textual response explaining why a
 # particular resource is a 404.
 module.exports = class Fallback extends Builder
+  @createBuilderFor: (manager, target) ->
+    return new Fallback target, [ target ],
+      manager: manager
+
   handleRequest: (req, res, next) ->
     accept = req.headers.accept ? ""
 
@@ -44,7 +48,7 @@ module.exports = class Fallback extends Builder
       console.log = (args...) ->
         reasons.push util.format args...
       @manager.setOption 'verbose', 9
-      @manager.resolve @target
+      Builder.createBuilderFor @manager, @target
     finally
       # Restore the old information
       console.log = old_log
@@ -55,9 +59,9 @@ module.exports = class Fallback extends Builder
   renderHTML: (reasons) ->
     title = "404 - File not found"
     extra = ""
-    if @target.name == 'index.html'
-      needed_file = path.join @manager.getSourcePath(), @target.name
+    if @target.getPath() == "#{@manager.getOption 'targetPath'}/index.html"
       title = "Welcome to webapp!"
+      needed_file = @manager.fs.getVariantPath @target.getPath()
       extra = "<h2>Create the file #{needed_file} to get started.</h2>"
 
     """
@@ -83,7 +87,7 @@ module.exports = class Fallback extends Builder
     <h1>#{title}</h1>
     #{extra}
     <p>
-      The file #{@target.name} could not be built. The following information may be relevant:
+      The file #{@target.getPath()} could not be built. The following information may be relevant:
     </p>
     <ul>
       #{("<li><tt>#{r}</tt></li>\n" for r in reasons).join ''}
