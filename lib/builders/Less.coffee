@@ -5,6 +5,7 @@ less = require 'less'
 
 Builder.registerBuilder class Less extends Builder
   @targetSuffix: '.css'
+  @sourceSuffix: '.less'
 
   constructor: (target, sources, options) ->
     super target, sources, options

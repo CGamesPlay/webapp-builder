@@ -10,6 +10,8 @@ describe 'Builder', ->
     @fs = new FileSystemMock
       "test.txt": "It works!"
       "something.coffee": "coffeescript"
+      "style.less": "less and junk"
+      "module.js": "javascript"
 
     @manager = new BuildManager
       fileSystem: @fs
@@ -21,6 +23,31 @@ describe 'Builder', ->
       manager: @manager
     @failure_builder = new Builder.Copy 'out/404.txt',
       manager: @manager
+
+  describe "#createBuilderFor", ->
+    it "correctly infers .css to .less", ->
+      target = @fs.resolve 'out/style.css'
+      builder = Builder.createBuilderFor @manager, target
+      expect(builder).to.exist
+      expect(builder).to.be.an.instanceof Builder.Less
+
+    it "correctly infers .js to .coffee", ->
+      target = @fs.resolve 'out/something.js'
+      builder = Builder.createBuilderFor @manager, target
+      expect(builder).to.exist
+      expect(builder).to.be.an.instanceof Builder.Modulr
+
+    it "correctly infers .js to .js", ->
+      target = @fs.resolve 'out/module.js'
+      builder = Builder.createBuilderFor @manager, target
+      expect(builder).to.exist
+      expect(builder).to.be.an.instanceof Builder.Modulr
+
+    it "correctly infers .txt to .txt", ->
+      target = @fs.resolve 'out/test.txt'
+      builder = Builder.createBuilderFor @manager, target
+      expect(builder).to.exist
+      expect(builder).to.be.an.instanceof Builder.Copy
 
   describe "#inferTarget", ->
     class WithSuffix extends Builder
@@ -36,6 +63,20 @@ describe 'Builder', ->
     it "handles suffixes", ->
       target = @builder.inferTarget()
       expect(target.getPath()).to.equal("something.js")
+
+  describe "#removeListeners", ->
+    it "properly removes listeners", ->
+      # Precondition:
+      expect(@specific_file.listeners Builder.BUILD_FINISHED).to.have.length 1
+      @dependent_file.removeListeners()
+      expect(@specific_file.listeners Builder.BUILD_FINISHED).to.have.length 0
+
+    it "emits READY_TO_BUILD once dependencies have finished", (done) ->
+      @dependent_file.once Builder.READY_TO_BUILD, ->
+        done()
+      @dependent_file.queueBuild()
+      # Now this should be waiting on @specific_file
+      @specific_file.doBuild()
 
   describe "#isAffectedBy", ->
     it "handles filenames", ->

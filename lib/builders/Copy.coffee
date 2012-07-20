@@ -2,13 +2,16 @@
 { FileSystem } = require '../FileSystem'
 
 Builder.registerBuilder class Copy extends Builder
+  @createBuilderFor: (manager, target) ->
+    target.getReadablePath()
+    return new Copy target, [ target ],
+      manager: manager
+
   validateSources: ->
     if @sources.length != 1
       throw new Error "#{@} requires exactly one source."
 
-  inferTarget: ->
-    return super if @sources[0] instanceof Builder
-    @manager.fs.resolve @sources[0]
+  inferTarget: -> @sources[0]
 
   handleRequest: (req, res, next) ->
     throw new Error "Not written yet"

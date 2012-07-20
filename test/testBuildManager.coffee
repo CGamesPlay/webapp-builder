@@ -38,6 +38,15 @@ describe 'BuildManager', ->
     it "listens to READY_TO_BUILD", ->
       expect(@some_file.listeners Builder.READY_TO_BUILD).to.be.length 1
 
+  describe "#unregister", ->
+    it "removes event listeners from BuildManager", ->
+      @manager.unregister @cache_everything
+      expect(@cache_everything.listeners Builder.READY_TO_BUILD).to.be.length 0
+
+    it "removes event listeners from dependencies", ->
+      @manager.unregister @cache_everything
+      expect(@some_file.listeners Builder.BUILD_FINISHED).to.be.length 0
+
   describe "#make", ->
     it "makes simple targets", (done) ->
       @manager.make 'out/index.html', (results) =>

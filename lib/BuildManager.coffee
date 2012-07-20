@@ -72,23 +72,47 @@ module.exports = class BuildManager
       console.log "Added #{builder}"
     @
 
+  unregister: (needle) ->
+    @builders = (b for b in @builders when b isnt needle)
+    needle.removeListener Builder.READY_TO_BUILD, @builderIsReady
+    needle.removeListeners()
+    if @getOption('verbose') >= 2
+      console.log "Removed #{needle}"
+    @
+
   make: (targets, done) ->
     if not targets? or targets.length == 0
       targets = @builders
     else
       targets = [ targets ] unless Array.isArray targets
-      targets = (@resolve @fs.resolve t for t in targets)
+      targets = (@fs.resolve t for t in targets)
 
     results = {}
     waiting_on = targets.length
-    for t in targets
-      t.queueBuild()
-      t.once Builder.BUILD_FINISHED, (b, err) =>
-        waiting_on -= 1
-        results[b.getPath()] = err
+    temporary_builders = []
 
-        if waiting_on is 0
-          done results
+    target_finished = (b, err) =>
+      waiting_on -= 1
+      results[b.getPath()] = err
+
+      if waiting_on is 0
+        @unregister b for b in temporary_builders
+        done results
+
+    for t in targets
+      b = @resolve t
+      unless b?
+        # Try to guess what builder to use
+        b = Builder.createBuilderFor @, t
+        temporary_builders.push b if b?
+
+      if b?
+        b.queueBuild()
+        b.once Builder.BUILD_FINISHED, target_finished
+      else
+        error = new Error "No builder available for #{t}."
+        results[t.getPath()] = error
+        console.error "Error: #{error.message}"
     @
 
   resolve: (path) ->

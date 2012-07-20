@@ -1,5 +1,5 @@
 { EventEmitter } = require 'events'
-{ FileSystem } = require './FileSystem'
+{ FileSystem, FileNotFoundException } = require './FileSystem'
 fs = require 'fs'
 mime = require 'mime'
 path = require 'path'
@@ -9,10 +9,54 @@ exports.Builder = class Builder extends EventEmitter
   @BUILD_FINISHED = "BUILD_FINISHED"
 
   @builderTypes: {}
+  @builderList: []
 
   @registerBuilder: (b) ->
     @builderTypes[b.name] = b
+    @builderList.unshift b
     Builder[b.name] = b
+
+  @createBuilderFor: (manager, target) ->
+    idx = target.getPath().lastIndexOf '.'
+    basename = if idx != -1
+      target.getPath().substr 0, idx
+    else
+      target.getPath()
+
+    builder = null
+    for type in @builderList
+      try
+        if not type.targetSuffix or
+            target.getPath() is "#{basename}#{type.targetSuffix}"
+          if type.createBuilderFor isnt Builder.createBuilderFor
+            builder = type.createBuilderFor manager, target
+            break if builder?
+
+          else if type.targetSuffix?
+            unless type.sourceSuffix?
+              throw new Error "Builder.#{type.name} does not define a " +
+                "source suffix and does not override createBuilderFor."
+
+            found_source = manager.fs.resolve "#{basename}#{type.sourceSuffix}"
+            # This will throw if file not found
+            found_source.getReadablePath()
+            builder = new type target, [ found_source ],
+              manager: manager
+            break
+
+      catch err
+        if err instanceof FileNotFoundException
+          if manager.getOption('verbose') >= 2
+            console.log "Builder.#{type.name} cannot build " +
+              "#{target} because #{err.filename} was not found."
+
+        else
+          console.error "Builder.#{type.name} cannot build " +
+            "#{target} due to #{err}"
+
+    if builder?
+      manager.register builder
+    builder
 
   # Usage:
   # parseArguments([ TARGET, SOURCES, OPTIONS ])
@@ -44,10 +88,10 @@ exports.Builder = class Builder extends EventEmitter
 
     @target = @manager.fs.resolve @target if @target?
     @sources = for source in @sources
-        if source instanceof Builder
-          source
-        else
-          @manager.fs.resolve source
+      if source instanceof Builder
+        source
+      else
+        @manager.fs.resolve source
 
     @validateSources()
     @target = @inferTarget() unless @target?
@@ -77,6 +121,10 @@ exports.Builder = class Builder extends EventEmitter
 
     target = "#{basename}#{@constructor.targetSuffix}"
     @manager.fs.resolve target
+
+  removeListeners: ->
+    for s in @sources when s instanceof Builder
+      s.removeListener Builder.BUILD_FINISHED, @dependencyFinished
 
   # When a dependency has been updated, check to see if we need to update
   # ourselves.
