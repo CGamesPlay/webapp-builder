@@ -1,4 +1,5 @@
 ArgumentParser = require('argparse').ArgumentParser
+Reporter = require './Reporter'
 path = require 'path'
 
 parser = new ArgumentParser
@@ -12,6 +13,13 @@ common_args = (parser) ->
   parser.addArgument [ '-v', '--verbose' ],
     action: 'count'
     help: "Increase amount of logging."
+
+  parser.addArgument [ '-j', '--jobs' ],
+    help: 'Number of builds to perform simultaneously. Default is number of ' +
+          'CPUs.'
+    defaultValue: null
+    type: 'int'
+    dest: 'concurrency'
 
 common_args parser
 
@@ -32,17 +40,17 @@ server_parser.addArgument [ '-p', '--port' ],
   defaultValue: process.env.PORT ? 0
   type: 'int'
 
+server_parser.addArgument [ '--no-watch' ],
+  help: 'Disable watching the file system for changes and auto-refresh.'
+  action: 'storeFalse'
+  dest: 'watchFileSystem'
+  defaultValue: true
+
 build_parser = subparsers.addParser "build"
   addHelp: yes
   help: 'Build all defined assets.'
 
 common_args build_parser
-
-build_parser.addArgument [ '-j', '--jobs' ],
-  help: 'Number of builds to perform simultaneously. Default 1.'
-  defaultValue: 1
-  type: 'int'
-  dest: 'concurrency'
 
 build_parser.addArgument [ 'targets' ],
   help: 'Targets to build'
@@ -57,6 +65,7 @@ commands =
     server.standalone args
   build: ->
     BuildManager = require './BuildManager'
+    args.verbose += Reporter.INFO
     m = new BuildManager args
     m.make args.targets, (results) ->
       success = yes

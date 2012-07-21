@@ -40,7 +40,7 @@ Builder.registerBuilder class Modulr extends Builder
   dump: ->
     super()
     for s in @modulrDependencies
-      @manager.debug "  (modulr) #{s}"
+      @manager.reporter.debug "  (modulr) #{s}"
 
   isAffectedBy: (node) ->
     return true if super node

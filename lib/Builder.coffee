@@ -53,7 +53,8 @@ exports.Builder = class Builder extends EventEmitter
               "#{target} because: #{err.message}"
 
         else
-          manager.error "Error while creating builder for #{target}: #{err}"
+          manager.reporter.error "Error while creating builder for " +
+            "#{target}: #{err}"
 
     if builder?
       builder.isDynamicallyGenerated = yes
@@ -113,11 +114,11 @@ exports.Builder = class Builder extends EventEmitter
     "Builder.#{@constructor.name}(#{@target?.toString()})"
 
   dump: ->
-    @manager.debug "#{@}"
+    @manager.reporter.debug "#{@}"
     for s in @sources
-      @manager.debug "  #{s}"
+      @manager.reporter.debug "  #{s}"
     for s in @impliedSources
-      @manager.debug "  (implied) #{s}"
+      @manager.reporter.debug "  (implied) #{s}"
 
   getPath: -> @target.getPath()
 

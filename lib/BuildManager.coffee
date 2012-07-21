@@ -7,7 +7,7 @@ path = require 'path'
 
 module.exports = class BuildManager
   @defaultOptions:
-    concurrency: 1
+    concurrency: require('os').cpus().length
     sourcePath: '.'
     targetPath: 'out'
 
@@ -17,8 +17,6 @@ module.exports = class BuildManager
       logLevel: @externalOptions.verbose
     @queue = async.queue @processQueueJob, 1
     @reset()
-    if @getOption('watchFileSystem')
-      @fs.startWatching()
 
   reset: ->
     if @queue.length() isnt 0
@@ -57,7 +55,7 @@ module.exports = class BuildManager
   processQueueJob: (builder, done) =>
     @reporter.info "Building #{builder.getPath()} using #{builder}"
     builder.doBuild()
-    builder.once Builder.BUILD_FINISHED, (b, err) ->
+    builder.once Builder.BUILD_FINISHED, (b, err) =>
       if err instanceof MissingDependencyError
         @reporter.warning "Unable to build #{b.getPath()} due to " +
           "previous failures."
@@ -96,7 +94,8 @@ module.exports = class BuildManager
 
       if waiting_on is 0
         @unregister b for b in temporary_builders
-        done results
+        process.nextTick ->
+          done results
 
     for t in targets
       b = @resolve t
