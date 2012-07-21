@@ -21,8 +21,7 @@ module.exports = class MakefileProcessor
 
   # Given the actual path to a Makefile, load it.
   loadFile: (path) ->
-    if @manager.getOption('verbose') >= 2
-      console.log "\nLoading file: #{path}"
+    @manager.reporter.verbose "\nLoading file: #{path}"
 
     code = fs.readFileSync path, 'utf-8'
 

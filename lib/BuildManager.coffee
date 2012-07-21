@@ -1,6 +1,7 @@
 { Builder, MissingDependencyError } = require './Builder'
-MakefileProcessor = require './MakefileProcessor'
 { FileSystem } = require './FileSystem'
+MakefileProcessor = require './MakefileProcessor'
+Reporter = require './Reporter'
 async = require 'async'
 path = require 'path'
 
@@ -9,10 +10,11 @@ module.exports = class BuildManager
     concurrency: 1
     sourcePath: '.'
     targetPath: 'out'
-    verbose: 0
 
-  constructor: (@externalOptions) ->
-    @fs = @externalOptions?.fileSystem ? new FileSystem
+  constructor: (@externalOptions = {}) ->
+    @fs = @externalOptions.fileSystem ? new FileSystem
+    @reporter = new Reporter
+      logLevel: @externalOptions.verbose
     @queue = async.queue @processQueueJob, 1
     @reset()
     if @getOption('watchFileSystem')
@@ -36,14 +38,14 @@ module.exports = class BuildManager
       @makefileProcessor.loadDefault()
 
     @fs.setVariantDir @getOption('targetPath'), @getOption('sourcePath')
+    @reporter.setLogLevel @getOption 'verbose'
     @queue.concurrency = @getOption 'concurrency'
 
-    if @getOption('verbose') >= 2
-      console.log "Done loading makefiles.\n"
+    @reporter.verbose "Done loading makefiles.\n"
 
   getOption: (opt) ->
     @effectiveOptions[opt] ?
-      @externalOptions?[opt] ?
+      @externalOptions[opt] ?
       BuildManager.defaultOptions[opt]
 
   setOption: (opt, value) ->
@@ -53,33 +55,28 @@ module.exports = class BuildManager
     @queue.push builder
 
   processQueueJob: (builder, done) =>
-    if @getOption('verbose') > 0
-      console.log "Building #{builder.getPath()} using #{builder}"
+    @reporter.info "Building #{builder.getPath()} using #{builder}"
     builder.doBuild()
     builder.once Builder.BUILD_FINISHED, (b, err) ->
       if err instanceof MissingDependencyError
-        console.error "Unable to build #{b.getPath()} due to " +
+        @reporter.warning "Unable to build #{b.getPath()} due to " +
           "previous failures."
       else if err
-        console.error "Error while building #{b.getPath()}"
-        console.error err.stack
-        console.error ""
+        @reporter.error "Error while building #{b.getPath()}\n#{err.stack}\n"
 
       done()
 
   register: (builder) ->
     @builders.unshift(builder)
     builder.on Builder.READY_TO_BUILD, @builderIsReady
-    if @getOption('verbose') >= 2
-      console.log "Added #{builder}"
+    @reporter.verbose "Added #{builder}"
     @
 
   unregister: (needle) ->
     @builders = (b for b in @builders when b isnt needle)
     needle.removeListener Builder.READY_TO_BUILD, @builderIsReady
     needle.removeListeners()
-    if @getOption('verbose') >= 2
-      console.log "Removed #{needle}"
+    @reporter.verbose "Removed #{needle}"
     @
 
   make: (targets, done) ->
@@ -114,7 +111,7 @@ module.exports = class BuildManager
       else
         error = new Error "No builder available for #{t}."
         results[t.getPath()] = error
-        console.error "Error: #{error.message}"
+        @reporter.error "Error: #{error.message}"
     @
 
   resolve: (node) ->

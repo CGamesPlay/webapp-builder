@@ -2,6 +2,7 @@ BuildManager = require './BuildManager'
 { Builder } = require './Builder'
 { FileSystem, FileNotFoundException } = require './FileSystem'
 Fallback = require './builders/Fallback'
+Reporter = require './Reporter'
 express = require 'express'
 socketio = require 'socket.io'
 path = require 'path'
@@ -59,9 +60,8 @@ exports.middleware = (args) ->
     for t in targets
       for dep, dep_list of known_deps when dep_list[t.getPath()] or
                                            dep is t.getPath()
-        if manager.getOption('verbose') >= 1
-          console.log "Refreshing #{dep} because #{t.target.getPath()} " +
-            "has changed."
+        manager.reporter.info "Refreshing #{dep} because " +
+          "#{t.target.getPath()} has changed, which affects #{t}."
         for id, c of clients when c.on_page is dep
           c.socket.emit 'refresh',
             "Refreshing page because #{node} changed, which affects #{t}."
@@ -86,9 +86,8 @@ exports.middleware = (args) ->
       unless builder?
         # We don't have a rule for this thing? The client needs to do a refresh
         # to regenerate the dynamic rule.
-        if manager.getOption('verbose') >= 1
-          console.log "Refreshing #{me.on_page} because #{node} has no " +
-            "Builders. (Possible server restart?)"
+        manager.reporter.info "Refreshing #{me.on_page} because #{node} has " +
+          "no Builders. (Possible server restart?)"
         socket.emit 'refresh', "Refreshing page because #{node} has no " +
           "Builders. (Possible server restart?)"
 
@@ -123,7 +122,7 @@ exports.middleware = (args) ->
       builder = Builder.createBuilderFor manager, target, missing_files
 
     if builder?
-      console.log "#{req.url} will be built by #{builder}" if args.verbose > 0
+      manager.reporter.debug "#{req.url} will be built by #{builder}"
 
     else if args.fallthrough is false
       builder = new Fallback target, [ ], manager: manager
@@ -133,17 +132,19 @@ exports.middleware = (args) ->
     else
       return next()
 
-    if builder instanceof Fallback
-      res.statusCode = 404
-
     if req.headers.referer?
       referer = map_url_to_node req.headers.referer
       deps = known_deps[referer.getPath()] ?= {}
       # Referer must depend on this file (except for refreshes)
-      deps[target.getPath()] = true unless referer.equals target
+      unless referer.equals(target) or deps[target.getPath()]
+        manager.reporter.debug "#{referer} has a client-side dependency on " +
+          "#{target}."
+        deps[target.getPath()] = true
 
     builder.getData (err, data) ->
       return next err if err?
+      if builder instanceof Fallback
+        res.statusCode = 404
       if builder.getMimeType() is "text/html"
         data = data.toString() + get_socketio_code_for builder
       res.setHeader 'Content-Type', builder.getMimeType()
@@ -154,6 +155,8 @@ exports.middleware = (args) ->
 exports.standalone = (args) ->
   args.fallthrough = false
   args.watchFileSystem = true
+  # -v and -q will shift the log level from the default
+  args.verbose = args.verbose + Reporter.INFO
 
   app = express.createServer()
   args.socketIOManager = socketio.listen app,

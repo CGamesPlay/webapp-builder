@@ -49,13 +49,11 @@ exports.Builder = class Builder extends EventEmitter
       catch err
         if err instanceof FileNotFoundException
           missing_files.splice -1, 0, err.filenames...
-          if manager.getOption('verbose') >= 2
-            console.log "Builder.#{type.name} cannot build " +
+          manager.reporter.verbose "Builder.#{type.name} cannot build " +
               "#{target} because: #{err.message}"
 
         else
-          console.error "Builder.#{type.name} cannot build " +
-            "#{target} due to #{err}"
+          manager.error "Error while creating builder for #{target}: #{err}"
 
     if builder?
       builder.isDynamicallyGenerated = yes
@@ -115,11 +113,11 @@ exports.Builder = class Builder extends EventEmitter
     "Builder.#{@constructor.name}(#{@target?.toString()})"
 
   dump: ->
-    console.log "#{@}"
+    @manager.debug "#{@}"
     for s in @sources
-      console.log "  #{s}"
+      @manager.debug "  #{s}"
     for s in @impliedSources
-      console.log "  (implied) #{s}"
+      @manager.debug "  (implied) #{s}"
 
   getPath: -> @target.getPath()
 

@@ -19,21 +19,15 @@ module.exports = class Fallback extends Builder
     next null, data
 
   enumerateProblems: (path) ->
-    # Hijack options to get more verbosity
-    [ old_log, old_verbosity ] = [ console.log, @manager.getOption 'verbose' ]
     reasons = []
+    listener = (level, args) ->
+      reasons.push level: level, message: util.format args...
+    @manager.reporter.on 'log', listener
     try
-      # Do the resolution with high verbosity and logging
-      console.log = (args...) ->
-        reasons.push util.format args...
-      @manager.setOption 'verbose', 9
-      error_list = []
-      Builder.createBuilderFor @manager, @target, error_list
+      Builder.createBuilderFor @manager, @target
 
     finally
-      # Restore the old information
-      console.log = old_log
-      @manager.setOption 'verbose', old_verbosity
+      @manager.reporter.removeListener 'log', listener
 
     reasons
 
@@ -62,6 +56,10 @@ module.exports = class Fallback extends Builder
     h1 {
       color: #343434;
     }
+    li.level-0, li.level-1, li.level-2 {
+      font-weight: bold;
+      color: red;
+    }
     </style>
     </head>
     <body>
@@ -71,7 +69,9 @@ module.exports = class Fallback extends Builder
       The file #{@target.getPath()} could not be built. The following information may be relevant:
     </p>
     <ul>
-      #{("<li><tt>#{r}</tt></li>\n" for r in reasons).join ''}
+      #{("<li class=\"level-#{r.level}\">
+            <tt>#{r.message}</tt>
+          </li>\n" for r in reasons).join ''}
     </ul>
     </body>
     </html>
