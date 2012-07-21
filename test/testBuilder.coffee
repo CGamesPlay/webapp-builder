@@ -94,6 +94,11 @@ describe 'Builder', ->
       ret = @dependent_file.isAffectedBy file
       expect(ret).to.be.true
 
+    it "handles variant directories", ->
+      file = @fs.resolve "test.txt"
+      ret = @specific_file.isAffectedBy file
+      expect(ret).to.be.true
+
   describe "#queueBuild", ->
     it "emits READY_TO_BUILD for simple tasks", (done) ->
       @specific_file.once Builder.READY_TO_BUILD, ->

@@ -7,37 +7,16 @@ util = require 'util'
 # middleware. This Builder will always build a textual response explaining why a
 # particular resource is a 404.
 module.exports = class Fallback extends Builder
-  @createBuilderFor: (manager, target) ->
-    return new Fallback target, [ target ],
-      manager: manager
+  constructor: (args...) ->
+    super args...
+    @isDynamicallyGenerated = yes
 
-  handleRequest: (req, res, next) ->
-    accept = req.headers.accept ? ""
+  getMimeType: -> "text/html"
 
+  getData: (next) ->
     reasons = @enumerateProblems @target.name
-
-    res.statusCode = 404
-
-    if ~accept.indexOf 'html'
-      data = @renderHTML reasons
-      res.setHeader 'Content-Type', 'text/html; charset=utf-8'
-      res.write data
-      res.end()
-
-    else if ~accept.indexOf 'json'
-      data = JSON.stringify
-        error:
-          message: "Unable to build #{@target.name}\n\n#{reasons.join "\n"}"
-      res.setHeader 'Content-Type', 'application/json'
-      res.write data
-      res.end()
-
-    else
-      data = "Unable to build #{@target.name}\n\nReasons:\n" +
-        ("    #{r}\n" for r in reasons).join ''
-      res.setHeader 'Content-Type', 'text/plain; charset=utf-8'
-      res.write data
-      res.end()
+    data = @renderHTML reasons
+    next null, data
 
   enumerateProblems: (path) ->
     # Hijack options to get more verbosity
@@ -48,7 +27,9 @@ module.exports = class Fallback extends Builder
       console.log = (args...) ->
         reasons.push util.format args...
       @manager.setOption 'verbose', 9
-      Builder.createBuilderFor @manager, @target
+      error_list = []
+      Builder.createBuilderFor @manager, @target, error_list
+
     finally
       # Restore the old information
       console.log = old_log
@@ -61,7 +42,7 @@ module.exports = class Fallback extends Builder
     extra = ""
     if @target.getPath() == "#{@manager.getOption 'targetPath'}/index.html"
       title = "Welcome to webapp!"
-      needed_file = @manager.fs.getVariantPath @target.getPath()
+      needed_file = @target.getVariantPath()
       extra = "<h2>Create the file #{needed_file} to get started.</h2>"
 
     """

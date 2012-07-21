@@ -16,12 +16,14 @@ exports.Builder = class Builder extends EventEmitter
     @builderList.unshift b
     Builder[b.name] = b
 
-  @createBuilderFor: (manager, target) ->
+  @createBuilderFor: (manager, target, missing_files = null) ->
     idx = target.getPath().lastIndexOf '.'
     basename = if idx != -1
       target.getPath().substr 0, idx
     else
       target.getPath()
+
+    missing_files ?= []
 
     builder = null
     for type in @builderList
@@ -46,15 +48,18 @@ exports.Builder = class Builder extends EventEmitter
 
       catch err
         if err instanceof FileNotFoundException
+          missing_files.splice -1, 0, err.filenames...
           if manager.getOption('verbose') >= 2
             console.log "Builder.#{type.name} cannot build " +
-              "#{target} because #{err.filename} was not found."
+              "#{target} because: #{err.message}"
 
         else
           console.error "Builder.#{type.name} cannot build " +
             "#{target} due to #{err}"
 
     if builder?
+      builder.isDynamicallyGenerated = yes
+      builder.impliedSources.splice -1, 0, missing_files...
       manager.register builder
     builder
 
@@ -97,12 +102,24 @@ exports.Builder = class Builder extends EventEmitter
     @target = @inferTarget() unless @target?
     @name = @target.name
 
+    # For dynamically-generated builders, the list of sources is augmented by a
+    # list of files that would have caused a higher-precedence builder to
+    # trigger.
+    @impliedSources = []
+
     # Listen for finish events so we know when to update ourselves.
     for s in @sources when s instanceof Builder
       s.on Builder.BUILD_FINISHED, @dependencyFinished
 
   toString: ->
     "Builder.#{@constructor.name}(#{@target?.toString()})"
+
+  dump: ->
+    console.log "#{@}"
+    for s in @sources
+      console.log "  #{s}"
+    for s in @impliedSources
+      console.log "  (implied) #{s}"
 
   getPath: -> @target.getPath()
 
@@ -147,10 +164,9 @@ exports.Builder = class Builder extends EventEmitter
 
   isAffectedBy: (node) ->
     for s in @sources
-      if s instanceof FileSystem.Node
-        return s.getPath() is node.getPath()
-      else if s.isAffectedBy node
-        return true
+      return true if s.isAffectedBy node
+    for s in @impliedSources
+      return true if s.isAffectedBy node
     return false
 
   queueBuild: ->
@@ -182,14 +198,6 @@ exports.Builder = class Builder extends EventEmitter
         return next err if err?
 
         @target.writeFile data, next
-
-  handleRequest: (req, res, next) ->
-    @getData (err, data) =>
-      return next err if err?
-      res.setHeader 'Content-Type', @getMimeType()
-      res.setHeader 'Content-Length', data.length
-      res.write data
-      res.end()
 
 exports.MissingDependencyError = class MissingDependencyError extends Error
   constructor: (@builder, @dependency, @innerException) ->

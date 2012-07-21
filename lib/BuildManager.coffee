@@ -15,6 +15,8 @@ module.exports = class BuildManager
     @fs = @externalOptions?.fileSystem ? new FileSystem
     @queue = async.queue @processQueueJob, 1
     @reset()
+    if @getOption('watchFileSystem')
+      @fs.startWatching()
 
   reset: ->
     if @queue.length() isnt 0
@@ -115,10 +117,13 @@ module.exports = class BuildManager
         console.error "Error: #{error.message}"
     @
 
-  resolve: (path) ->
+  resolve: (node) ->
     for builder in @builders
-      return builder if builder.target.equals path
+      return builder if builder.target.equals node
     null
 
-  findTargetsAffectedBy: (path) ->
-    b for b in @builders when b.isAffectedBy path
+  findTargetsAffectedBy: (node) ->
+    b for b in @builders when b.isAffectedBy node
+
+  dumpAllBuilders: ->
+    b.dump() for b in @builders

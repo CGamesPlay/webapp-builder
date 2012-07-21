@@ -9,9 +9,16 @@
     "argparse": ">=0.1.3",
     "async": ">=0.1.22",
     "coffee-script": ">=1.3.3",
-    "express": ">=2.5.11",
+    "express": "<3",
     "less": ">=1.3.0",
     "mime": ">=1.2.6",
-    "modulr": ">=0.13.0"
+    "modulr": ">=0.13.0",
+    "socket.io": ">=0.9.6",
+    "watchr": ">=2.1.2"
+  },
+  "devDependencies": {
+    "chai": ">=1.1.1",
+    "mkdirp": ">= 0.3.3",
+    "mocha": ">=1.3.0"
   }
 }
