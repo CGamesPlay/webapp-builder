@@ -43,44 +43,47 @@ exports.middleware = (args) ->
       res.end()
       return
 
-    builder = manager.resolve target
-    missing_files = []
-    unless builder?
-      builder = Builder.createBuilderFor manager, target, missing_files
-
-    if builder?
-      manager.reporter.debug "#{req.url} will be built by #{builder}"
-
-    else if args.fallthrough is false
-      builder = new Fallback target, [ ], manager: manager
-      builder.impliedSources = (manager.fs.resolve f for f in missing_files)
-      manager.register builder
-
-    else
-      return next()
-
     if req.headers.referer? and client_manager?
       referer = map_url_to_node req.headers.referer
       unless referer.equals target
         # Filter out refreshes
         client_manager.addClientSideDependency referer, target
 
-    # Now that the rules are definitely set up, we can use BuildManager.make.
-    manager.make target, (results) ->
-      console.log results
-      err = results[target.getPath()]
-      return next err if err?
-      target.getData (err, data) ->
-        next err if err?
+    builder = manager.resolve target
+    missing_files = []
+    unless builder?
+      builder = Builder.createBuilderFor manager, target, missing_files
 
-        if builder instanceof Fallback
-          res.statusCode = 404
-        if builder.getMimeType() is "text/html" and client_manager?
-          data = data.toString() + client_manager.getTrailerFor builder
-        res.setHeader 'Content-Type', builder.getMimeType()
-        res.setHeader 'Content-Length', data.length
-        res.write data
-        res.end()
+    serve_response = (err, data) ->
+      return next err if err?
+
+      if builder.getMimeType() is "text/html" and client_manager?
+        data = data.toString() + client_manager.getTrailerFor builder
+      res.setHeader 'Content-Type', builder.getMimeType()
+      res.setHeader 'Content-Length', data.length
+      res.write data
+      res.end()
+
+    if builder? and not (builder instanceof Fallback)
+      manager.reporter.debug "#{req.url} will be built by #{builder}"
+
+      # Now that the rules are definitely set up, we can use BuildManager.make.
+      manager.make target, (results) ->
+        err = results[target.getPath()]
+        return next err if err?
+        target.getData serve_response
+
+    else if args.fallthrough is false
+      unless builder?
+        builder = new Fallback target, [ ], manager: manager
+        builder.impliedSources = (manager.fs.resolve f for f in missing_files)
+        manager.register builder
+
+      res.statusCode = 404
+      builder.getData serve_response
+
+    else
+      next()
 
 exports.standalone = (args) ->
   args.fallthrough = false

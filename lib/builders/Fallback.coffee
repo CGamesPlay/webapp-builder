@@ -18,6 +18,9 @@ module.exports = class Fallback extends Builder
     data = @renderHTML reasons
     next null, data
 
+  buildToFile: (next) ->
+    next new Error "#{@} cannot be built to a file."
+
   enumerateProblems: (path) ->
     reasons = []
     listener = (level, args) ->

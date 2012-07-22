@@ -11,10 +11,10 @@ exports.ClientManager = class ClientManager
 
   addClientSideDependency: (target, dep) ->
     deps = @knownDeps[target.getPath()] ?= {}
-    unless deps[target.getPath()]
+    unless deps[dep.getPath()]
       @manager.reporter.debug "#{target} has a client-side dependency on " +
         "#{dep}."
-    deps[target.getPath()] = true
+    deps[dep.getPath()] = true
 
   getTrailerFor: (builder) ->
     """
