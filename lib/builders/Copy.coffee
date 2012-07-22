@@ -17,8 +17,6 @@ Builder.registerBuilder class Copy extends Builder
   getData: (next) ->
     # Copy *must* get data from the variant directory, otherwise the whole copy
     # thing doesn't make sense.
-    variant_path = @sources[0].getVariantPath()
-    if variant_path is @target.getPath()
+    if @sources[0].getPath() is @target.getPath()
       throw new Error "#{@}: source and destination identical."
-    variant_node = @manager.fs.resolve variant_path
-    variant_node.getData next
+    @sources[0].getData next

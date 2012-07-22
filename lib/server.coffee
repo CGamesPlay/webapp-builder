@@ -76,7 +76,8 @@ exports.middleware = (args) ->
     else if args.fallthrough is false
       unless builder?
         builder = new Fallback target, [ ], manager: manager
-        builder.impliedSources = (manager.fs.resolve f for f in missing_files)
+        builder.impliedSources['alternates'] =
+          (manager.fs.resolve f for f in missing_files)
         manager.register builder
 
       res.statusCode = 404

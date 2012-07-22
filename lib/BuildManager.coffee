@@ -1,21 +1,28 @@
 { Builder, MissingDependencyError } = require './Builder'
+{ Decider } = require './Decider'
 { FileSystem } = require './FileSystem'
 MakefileProcessor = require './MakefileProcessor'
 Reporter = require './Reporter'
 async = require 'async'
+fs = require 'fs'
 path = require 'path'
 
 module.exports = class BuildManager
   @defaultOptions:
+    cacheFilename: '.webapp-cache.json'
     concurrency: require('os').cpus().length
+    deciderType: 'MD5'
     sourcePath: '.'
     targetPath: 'out'
 
   constructor: (@externalOptions = {}) ->
+    @effectiveOptions = {}
+    @cacheInfo = {}
     @fs = @externalOptions.fileSystem ? new FileSystem
     @reporter = new Reporter
       logLevel: @externalOptions.verbose
     @queue = async.queue @processQueueJob, 1
+    @loadCache()
     @reset()
 
   reset: ->
@@ -38,6 +45,11 @@ module.exports = class BuildManager
     @fs.setVariantDir @getOption('targetPath'), @getOption('sourcePath')
     @reporter.setLogLevel @getOption 'verbose'
     @queue.concurrency = @getOption 'concurrency'
+    @decider = new Decider[@getOption 'deciderType'] @
+    @decider.loadCacheInfo @cacheInfo.decider if @cacheInfo.decider?
+
+    for b in @builders
+      b.updateWithOptions()
 
     @reporter.verbose "Done loading makefiles.\n"
 
@@ -48,6 +60,25 @@ module.exports = class BuildManager
 
   setOption: (opt, value) ->
     @effectiveOptions[opt] = value
+
+  loadCache: ->
+    try
+      path = @fs.resolve(@getOption 'cacheFilename').getPath()
+      data = fs.readFileSync path, 'utf-8'
+      @cacheInfo = JSON.parse(data)
+      @reporter.verbose "Loaded cache information."
+    catch _
+      # Gulp
+
+  saveCache: ->
+    cache_info =
+      builders: {}
+      decider: @decider.getCacheInfo()
+
+    cache_info.builders[b.getCacheKey()] = b.getCacheInfo() for b in @builders
+
+    path = @fs.resolve(@getOption 'cacheFilename').getPath()
+    fs.writeFileSync path, JSON.stringify(cache_info)
 
   builderIsReady: (builder) =>
     @queue.push builder
@@ -67,6 +98,10 @@ module.exports = class BuildManager
   register: (builder) ->
     @builders.unshift(builder)
     builder.on Builder.READY_TO_BUILD, @builderIsReady
+
+    if @cacheInfo.builders?[builder.getCacheKey()]
+      builder.loadCacheInfo @cacheInfo.builders[builder.getCacheKey()]
+
     @reporter.verbose "Added #{builder}"
     @
 
@@ -86,14 +121,12 @@ module.exports = class BuildManager
 
     results = {}
     waiting_on = targets.length
-    temporary_builders = []
 
     target_finished = (b, err) =>
       waiting_on -= 1
       results[b.getPath()] = err
 
       if waiting_on is 0
-        @unregister b for b in temporary_builders
         process.nextTick ->
           done results
 
@@ -102,7 +135,6 @@ module.exports = class BuildManager
       unless b?
         # Try to guess what builder to use
         b = Builder.createBuilderFor @, t
-        temporary_builders.push b if b?
 
       if b?
         b.queueBuild()

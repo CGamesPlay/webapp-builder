@@ -17,9 +17,9 @@ describe 'BuildManager', ->
     @manager = new BuildManager
       fileSystem: @fs
 
-    @some_file = new Builder.Copy 'out/index.html',
+    @some_file = new Builder.Copy 'out/index.html', 'index.html',
       manager: @manager
-    @another_file = new Builder.Copy 'out/test.txt',
+    @another_file = new Builder.Copy 'out/test.txt', 'test.txt',
       manager: @manager
     @cache_everything = new Builder.AppCache 'out/app.cache', @some_file,
       manager: @manager
@@ -73,7 +73,7 @@ describe 'BuildManager', ->
 
   describe "#findTargetsAffectedBy", ->
     it "identifies all targets", ->
-      file = @fs.resolve "out/index.html"
+      file = @fs.resolve "index.html"
       targets = @manager.findTargetsAffectedBy file
       expect(targets).to.have.length(2)
       expect(targets).to.contain @some_file

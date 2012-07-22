@@ -58,8 +58,10 @@ exports.Builder = class Builder extends EventEmitter
 
     if builder?
       builder.isDynamicallyGenerated = yes
-      builder.impliedSources.splice -1, 0, missing_files...
+      alternates = builder.impliedSources['alternates'] ?= []
+      alternates.splice -1, 0, missing_files...
       manager.register builder
+      builder.updateWithOptions()
     builder
 
   # Usage:
@@ -90,6 +92,12 @@ exports.Builder = class Builder extends EventEmitter
     @isActive = no
     @waitingOn = {}
 
+    # A list of sources that are inferred from other places--such as files that
+    # would have resulted in different builders had they existed, or files that
+    # the named sources depend on. Stored as a collection of categories:
+    # @impliedSources['alternates'] = [ node, ... ]
+    @impliedSources = {}
+
     @target = @manager.fs.resolve @target if @target?
     @sources = for source in @sources
       if source instanceof Builder
@@ -97,14 +105,9 @@ exports.Builder = class Builder extends EventEmitter
       else
         @manager.fs.resolve source
 
-    @validateSources()
     @target = @inferTarget() unless @target?
+    @validateSources()
     @name = @target.name
-
-    # For dynamically-generated builders, the list of sources is augmented by a
-    # list of files that would have caused a higher-precedence builder to
-    # trigger.
-    @impliedSources = []
 
     # Listen for finish events so we know when to update ourselves.
     for s in @sources when s instanceof Builder
@@ -117,8 +120,9 @@ exports.Builder = class Builder extends EventEmitter
     @manager.reporter.debug "#{@}"
     for s in @sources
       @manager.reporter.debug "  #{s}"
-    for s in @impliedSources
-      @manager.reporter.debug "  (implied) #{s}"
+    for cat, list of @impliedSources
+      for s in list
+        @manager.reporter.debug "  (#{cat}) #{s}"
 
   getPath: -> @target.getPath()
 
@@ -142,6 +146,16 @@ exports.Builder = class Builder extends EventEmitter
     for s in @sources when s instanceof Builder
       s.removeListener Builder.BUILD_FINISHED, @dependencyFinished
 
+  updateWithOptions: ->
+    # Called after the Makefiles have been read and options applied. Useful to
+    # translate sources out of the variant directory.
+    for s, i in @sources when s instanceof FileSystem.Node
+      if @target.getPath() is s.getPath() and
+         @target.getPath() isnt s.getVariantPath()
+        s.removeListener Builder.BUILD_FINISHED, @dependencyFinished
+        @sources[i] = s = @manager.fs.resolve s.getVariantPath()
+        s.on Builder.BUILD_FINISHED, @dependencyFinished
+
   # When a dependency has been updated, check to see if we need to update
   # ourselves.
   dependencyFinished: (dep, err) =>
@@ -164,9 +178,26 @@ exports.Builder = class Builder extends EventEmitter
   isAffectedBy: (node) ->
     for s in @sources
       return true if s.isAffectedBy node
-    for s in @impliedSources
-      return true if s.isAffectedBy node
+    for cat, list of @impliedSources
+      for s in list
+        return true if s.isAffectedBy node
     return false
+
+  getCacheKey: ->
+    return @constructor.name + ":" + @target.getPath()
+
+  getCacheInfo: ->
+    info = {}
+    info.impliedSources = {}
+    for cat, list of @impliedSources
+      info.impliedSources[cat] = (s.getPath() for s in list)
+    info
+
+  loadCacheInfo: (info) ->
+    if info.impliedSources
+      @impliedSources = {}
+      for cat, list of info.impliedSources
+        @impliedSources[cat] = (@manager.fs.resolve s for s in list)
 
   queueBuild: ->
     @isActive = yes
@@ -190,13 +221,17 @@ exports.Builder = class Builder extends EventEmitter
     next new Error "#{@} does not implement getData"
 
   buildToFile: (next) ->
+    if @manager.decider.isBuilderCurrent @
+      @manager.reporter.debug "#{@} is up to date."
+      return next()
+
     @manager.fs.mkdirp path.dirname(@target.getPath()), (err) =>
       return next err if err?
 
       @getData (err, data) =>
         return next err if err?
-
         @target.writeFile data, next
+        @manager.decider.updateInfoCache @
 
 exports.MissingDependencyError = class MissingDependencyError extends Error
   constructor: (@builder, @dependency, @innerException) ->

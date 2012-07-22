@@ -42,26 +42,17 @@ Builder.registerBuilder class Modulr extends Builder
     { tried, found } = Modulr.resolveModule manager, basename, target
     builder = new Modulr target, [ found ],
       manager: manager
-    builder.impliedSources.splice -1, 0, tried...
+    builder.impliedSources['alternates'] = tried
     return builder
 
   constructor: (target, sources, options) ->
     super target, sources, options
-    @modulrDependencies = []
     @rootDir = path.dirname @sources[0].getPath()
 
-  dump: ->
-    super()
-    for s in @modulrDependencies
-      @manager.reporter.debug "  (modulr) #{s}"
-
-  isAffectedBy: (node) ->
-    return true if super node
-    for s in @modulrDependencies
-      return true if s.isAffectedBy node
-    return false
-
   getData: (next) ->
+    if @target.getPath() is @sources[0].getPath()
+      return next new Error "#{@} cannot compile itself."
+
     main_node = @sources[0]
 
     main_name = path.basename main_node.getPath()
@@ -78,13 +69,19 @@ Builder.registerBuilder class Modulr extends Builder
     module = resolver.createModule main_name
 
     resolver.fromModule module, (err, result) =>
-      @modulrDependencies = []
+      @impliedSources['modulr'] = []
+      @impliedSources['modulr-alternates'] = []
       for name, module of result.modules
+        @impliedSources['modulr'].push @manager.fs.resolve module.relativePath
         for p in module.triedPaths
-          @modulrDependencies.push @manager.fs.resolve p
+          @impliedSources['modulr-alternates'].push @manager.fs.resolve p
 
       if err instanceof FileNotFoundException
-        @modulrDependencies.push @manager.fs.resolve f for f in err.filenames
+        @impliedSources['missing'] = []
+        for f in err.filenames
+          @impliedSources['missing'].push @manager.fs.resolve f
+      else
+        delete @impliedSources['missing']
 
       return next err if err?
 

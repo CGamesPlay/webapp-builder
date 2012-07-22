@@ -17,11 +17,11 @@ describe 'Builder', ->
       fileSystem: @fs
       sourcePath: '.'
       targetPath: 'out'
-    @specific_file = new Builder.Copy 'out/test.txt',
+    @specific_file = new Builder.Copy 'out/test.txt', 'test.txt',
       manager: @manager
     @dependent_file = new Builder.AppCache 'out/app.cache', @specific_file,
       manager: @manager
-    @failure_builder = new Builder.Copy 'out/404.txt',
+    @failure_builder = new Builder.Copy 'out/404.txt', '404.txt',
       manager: @manager
 
   describe "#createBuilderFor", ->
@@ -80,17 +80,17 @@ describe 'Builder', ->
 
   describe "#isAffectedBy", ->
     it "handles filenames", ->
-      file = @fs.resolve "out/test.txt"
+      file = @fs.resolve "test.txt"
       ret = @specific_file.isAffectedBy file
       expect(ret).to.be.true
 
     it "ignores incorrect filenames", ->
-      file = @fs.resolve "out/something.coffee"
+      file = @fs.resolve "something.coffee"
       ret = @specific_file.isAffectedBy file
       expect(ret).to.be.false
 
     it "cascades", ->
-      file = @fs.resolve "out/test.txt"
+      file = @fs.resolve "test.txt"
       ret = @dependent_file.isAffectedBy file
       expect(ret).to.be.true
 

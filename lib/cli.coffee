@@ -68,8 +68,10 @@ commands =
     args.verbose += Reporter.INFO
     m = new BuildManager args
     m.make args.targets, (results) ->
-      success = yes
-      success = no for err in results when err?
-      process.exit (if success then 0 else 1)
+      m.saveCache()
+      code = 0
+      code = 1 for err in results when err?
+
+      process.exit code
 
 commands[args.command]()

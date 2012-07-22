@@ -72,6 +72,7 @@ class FileSystem.Node extends EventEmitter
 
   getData: (next) ->
     fs.readFile @getReadablePath(), next
+  getDataSync: -> fs.readFileSync @getReadablePath()
 
   writeFile: (data, next) ->
     fs.writeFile @getPath(), data, next
