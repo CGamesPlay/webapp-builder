@@ -16,14 +16,14 @@ exports.Builder = class Builder extends EventEmitter
     @builderList.unshift b
     Builder[b.name] = b
 
-  @createBuilderFor: (manager, target, missing_files = null) ->
+  @createBuilderFor: (manager, target, out_missing_files = null) ->
     idx = target.getPath().lastIndexOf '.'
     basename = if idx != -1
       target.getPath().substr 0, idx
     else
       target.getPath()
 
-    missing_files ?= []
+    missing_files_map = {}
 
     builder = null
     for type in @builderList
@@ -48,7 +48,8 @@ exports.Builder = class Builder extends EventEmitter
 
       catch err
         if err instanceof FileNotFoundException
-          missing_files.splice -1, 0, err.filenames...
+          for f in err.filenames
+            missing_files_map[f] = true
           manager.reporter.verbose "Builder.#{type.name} cannot build " +
               "#{target} because: #{err.message}"
 
@@ -56,10 +57,13 @@ exports.Builder = class Builder extends EventEmitter
           manager.reporter.error "Error while creating builder for " +
             "#{target}: #{err}"
 
+    missing_files = Object.keys(missing_files_map)
+    out_missing_files?.splice -1, 0, missing_files...
     if builder?
+      missing_sources = (manager.fs.resolve f for f in missing_files)
       builder.isDynamicallyGenerated = yes
       alternates = builder.impliedSources['alternates'] ?= []
-      alternates.splice -1, 0, missing_files...
+      alternates.splice -1, 0, missing_sources...
       manager.register builder
       builder.updateWithOptions()
     builder
@@ -117,12 +121,12 @@ exports.Builder = class Builder extends EventEmitter
     "Builder.#{@constructor.name}(#{@target?.toString()})"
 
   dump: ->
-    @manager.reporter.debug "#{@}"
+    @manager.reporter.error "#{@}"
     for s in @sources
-      @manager.reporter.debug "  #{s}"
+      @manager.reporter.error "  #{s}"
     for cat, list of @impliedSources
       for s in list
-        @manager.reporter.debug "  (#{cat}) #{s}"
+        @manager.reporter.error "  (#{cat}) #{s}"
 
   getPath: -> @target.getPath()
 
@@ -221,7 +225,7 @@ exports.Builder = class Builder extends EventEmitter
     next new Error "#{@} does not implement getData"
 
   buildToFile: (next) ->
-    if @manager.decider.isBuilderCurrent @
+    if @manager.decider.isBuilderCurrent @, true
       @manager.reporter.debug "#{@} is up to date."
       return next()
 
@@ -231,7 +235,6 @@ exports.Builder = class Builder extends EventEmitter
       @getData (err, data) =>
         return next err if err?
         @target.writeFile data, next
-        @manager.decider.updateInfoCache @
 
 exports.MissingDependencyError = class MissingDependencyError extends Error
   constructor: (@builder, @dependency, @innerException) ->

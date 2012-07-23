@@ -73,8 +73,7 @@ Builder.registerBuilder class Modulr extends Builder
       @impliedSources['modulr-alternates'] = []
       for name, module of result.modules
         @impliedSources['modulr'].push @manager.fs.resolve module.relativePath
-        for p in module.triedPaths
-          @impliedSources['modulr-alternates'].push @manager.fs.resolve p
+        @impliedSources['modulr-alternates'].push p for p in module.triedPaths
 
       if err instanceof FileNotFoundException
         @impliedSources['missing'] = []
@@ -86,6 +85,8 @@ Builder.registerBuilder class Modulr extends Builder
       return next err if err?
 
       result.output = modulr_builder.create(config).build result
+      # Hurr hurr durr
+      delete global.id
       next null, result.output
 
 class CustomDependencyResolver extends DependencyResolver

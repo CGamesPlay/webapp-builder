@@ -49,6 +49,18 @@ describe 'Builder', ->
       expect(builder).to.exist
       expect(builder).to.be.an.instanceof Builder.Copy
 
+    it "lists expected alternates", ->
+      target = @fs.resolve 'out/404.js'
+      missing_files = []
+      b = Builder.createBuilderFor @manager, target, missing_files
+      expect(b).not.to.exist
+      expect(missing_files).to.deep.equal [
+        # This file would have been served by Copy if it existed
+        '404.js'
+        # This one would have been caught by Modulr if it existed
+        'out/404.coffee'
+      ]
+
   describe "#inferTarget", ->
     class WithSuffix extends Builder
       @targetSuffix: '.js'
@@ -135,3 +147,38 @@ describe 'Builder', ->
         expect(err).to.be.an.instanceof Error
         done()
       @failure_builder.doBuild()
+
+describe 'Builder.Modulr', ->
+  beforeEach ->
+    @fs = new FileSystemMock
+      "something.coffee": "require './module'"
+      "module.coffee": "javascript"
+
+    @manager = new BuildManager
+      fileSystem: @fs
+      sourcePath: '.'
+      targetPath: 'out'
+    target = @fs.resolve 'out/something.js'
+    @builder = Builder.createBuilderFor @manager, target
+
+  describe "#createBuilderFor", ->
+    it "correctly infers .js to .coffee", ->
+      expect(@builder).to.exist
+      expect(@builder).to.be.an.instanceof Builder.Modulr
+
+  describe "#getData", ->
+    it "finishes with the expected sources", (next) ->
+      @builder.getData (err, data) =>
+        return next err if err?
+
+        expect(@builder.impliedSources['modulr-alternates']).to.deep.equal [
+          # These file would have been picked up by Modulr if they existed
+          @fs.resolve 'something.js'
+          @fs.resolve 'module.js'
+        ]
+        expect(@builder.impliedSources['modulr']).to.deep.equal [
+          # These files were actually used as deps
+          @fs.resolve 'something.coffee'
+          @fs.resolve 'module.coffee'
+        ]
+        next()

@@ -24,12 +24,10 @@ describe "FileSystemMock", ->
     it "makes faux directories", (done) ->
       @fs.mkdirp 'path/to/test', (err) =>
         return done err if err?
-        file = @fs.getFile '/'
-        expect(file).to.deep.equal
-          path:
-            to:
-              test: {}
-        done null
+        expect(@fs.getNode 'path/to/test').to.deep.equal
+          type: 'dir'
+          contents: {}
+        done()
 
 describe "FileSystemMock.Node", ->
   beforeEach ->
@@ -58,3 +56,14 @@ describe "FileSystemMock.Node", ->
     it "errors when reading nonexistent file", ->
       node = @fs.resolve "404.txt"
       expect(-> node.getReadablePath()).to.throw(FileNotFoundException)
+
+  describe "#writeFile", ->
+    it "writes correctly", (next) ->
+      node = @fs.resolve "written.txt"
+      content = "file has stuff " + Math.random()
+      node.writeFile content, (err) ->
+        expect(err).not.to.exist
+        node.getData (err, data) ->
+          expect(err).not.to.exist
+          expect(data).to.equal content
+          next()

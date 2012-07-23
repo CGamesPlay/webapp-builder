@@ -52,7 +52,7 @@ describe 'BuildManager', ->
       @manager.make 'out/index.html', (results) =>
         return done err for t, err of results when err?
 
-        data = @fs.getFile 'out/index.html'
+        data = @fs.getFile('out/index.html')?.data
         expect(data).to.equal "WOOOOO"
         done()
 
@@ -60,7 +60,7 @@ describe 'BuildManager', ->
       @manager.make 'out/app.cache', (results) =>
         return done err for t, err of results when err?
 
-        data = @fs.getFile 'out/index.html'
+        data = @fs.getFile('out/index.html')?.data
         expect(data).to.equal "WOOOOO"
         done()
 

@@ -14,13 +14,14 @@ module.exports = class BuildManager
     deciderType: 'MD5'
     sourcePath: '.'
     targetPath: 'out'
+    verbose: Reporter.WARNING
 
   constructor: (@externalOptions = {}) ->
     @effectiveOptions = {}
     @cacheInfo = {}
     @fs = @externalOptions.fileSystem ? new FileSystem
     @reporter = new Reporter
-      logLevel: @externalOptions.verbose
+      logLevel: @getOption 'verbose'
     @queue = async.queue @processQueueJob, 1
     @loadCache()
     @reset()
@@ -120,7 +121,7 @@ module.exports = class BuildManager
       targets = (@fs.resolve t for t in targets)
 
     results = {}
-    waiting_on = targets.length
+    waiting_on = 0
 
     target_finished = (b, err) =>
       waiting_on -= 1
@@ -137,12 +138,17 @@ module.exports = class BuildManager
         b = Builder.createBuilderFor @, t
 
       if b?
+        waiting_on += 1
         b.queueBuild()
         b.once Builder.BUILD_FINISHED, target_finished
       else
         error = new Error "No builder available for #{t}."
         results[t.getPath()] = error
         @reporter.error "Error: #{error.message}"
+
+    if waiting_on is 0
+      process.nextTick ->
+        done results
     @
 
   resolve: (node) ->
