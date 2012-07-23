@@ -175,9 +175,11 @@ exports.Builder = class Builder extends EventEmitter
     pending = Object.keys(@waitingOn).length
     if pending is 0
       process.nextTick =>
-        # XXX check to see if we actually need to build or if we are already up
-        # to date.
-        @emit Builder.READY_TO_BUILD, @
+        if @manager.decider.isBuilderCurrent @
+          @manager.reporter.debug "#{@} is up to date."
+          @emit Builder.BUILD_FINISHED, @
+        else
+          @emit Builder.READY_TO_BUILD, @
 
   isAffectedBy: (node) ->
     for s in @sources
@@ -225,16 +227,21 @@ exports.Builder = class Builder extends EventEmitter
     next new Error "#{@} does not implement getData"
 
   buildToFile: (next) ->
-    if @manager.decider.isBuilderCurrent @, true
+    token = {}
+    if @manager.decider.isBuilderCurrent @, token
       @manager.reporter.debug "#{@} is up to date."
       return next()
 
     @manager.fs.mkdirp path.dirname(@target.getPath()), (err) =>
       return next err if err?
 
-      @getData (err, data) =>
-        return next err if err?
-        @target.writeFile data, next
+      @target.unlink (err) =>
+        return next err if err? and err.code isnt 'ENOENT'
+
+        @getData (err, data) =>
+          return next err if err?
+          @manager.decider.updateSourceInfoFor @, token
+          @target.writeFile data, next
 
 exports.MissingDependencyError = class MissingDependencyError extends Error
   constructor: (@builder, @dependency, @innerException) ->

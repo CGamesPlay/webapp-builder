@@ -64,18 +64,12 @@ class FileSystem.Node extends EventEmitter
       return @getVariantPath() is other.getPath()
     false
 
-  exists: ->
-    path.existsSync @getPath()
-
-  getStat: ->
-    fs.statSync @getReadablePath()
-
-  getData: (next) ->
-    fs.readFile @getReadablePath(), next
+  exists: -> path.existsSync @getPath()
+  unlink: (next) -> fs.unlink @getPath(), next
+  getStat: -> fs.statSync @getReadablePath()
+  getData: (next) -> fs.readFile @getReadablePath(), next
   getDataSync: -> fs.readFileSync @getReadablePath()
-
-  writeFile: (data, next) ->
-    fs.writeFile @getPath(), data, next
+  writeFile: (data, next) -> fs.writeFile @getPath(), data, next
 
 exports.FileNotFoundException = class FileNotFoundException extends Error
   constructor: (@filenames) ->

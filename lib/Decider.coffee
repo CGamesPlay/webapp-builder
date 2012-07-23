@@ -10,20 +10,22 @@ exports.Decider = class Decider
   loadCacheInfo: (@savedInfo) ->
 
   # Check to see if the sources have changed since the last time
-  # updateAfterBuild was called with this builder. If then_update is true, this
-  # will additionally store the newly-detected information as current. That
-  # means this should only be set if the builder will be built immediately.
-  isBuilderCurrent: (builder, then_update = false) ->
+  # updateAfterBuild was called with this builder. Token is an object. If given,
+  # it can then be passed to updateSourceInfoFor immediately after building
+  # successfully to increase performance.
+  isBuilderCurrent: (builder, token = null) ->
     prev_info = @savedInfo[builder.getCacheKey()]
     curr_info = @getInfoForSources builder
 
-    if then_update
-      @savedInfo[builder.getCacheKey()] = curr_info
+    token[k] = v for k, v of curr_info if token?
 
     return false unless builder.target.exists() and prev_info?
 
     for path, prev of prev_info
       return false if @hasSourceChanged curr_info[path], prev
+    # Also count any *new* sources that showed up magically.
+    for path, curr of curr_info
+      return false unless prev_info[path]?
 
     for s in builder.sources when s instanceof Builder
       return false unless @isBuilderCurrent s
@@ -31,8 +33,8 @@ exports.Decider = class Decider
     return true
 
   # Update the cache of source information
-  updateSourceInfoFor: (builder) ->
-    @savedInfo[builder.getCacheKey()] = @getInfoForSources builder
+  updateSourceInfoFor: (builder, token = null) ->
+    @savedInfo[builder.getCacheKey()] = token ? @getInfoForSources builder
 
   hasSourceChanged: (curr, prev) ->
     # Return true if dep is newer than target

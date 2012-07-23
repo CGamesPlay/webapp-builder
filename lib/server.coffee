@@ -98,7 +98,6 @@ exports.standalone = (args) ->
   app.use exports.middleware args
   app.use express.errorHandler
     showStack: true
-    dumpExceptions: true
 
   server = app.listen args.port
   console.log "Server now live at http://localhost:#{server.address().port}/"
