@@ -5,8 +5,9 @@ BuildManager = require './BuildManager'
 Fallback = require './builders/Fallback'
 Reporter = require './Reporter'
 express = require 'express'
-socketio = require 'socket.io'
 path = require 'path'
+socketio = require 'socket.io'
+{ spawn } = require 'child_process'
 url = require 'url'
 
 exports.middleware = (args) ->
@@ -100,4 +101,9 @@ exports.standalone = (args) ->
     showStack: true
 
   server = app.listen args.port
-  console.log "Server now live at http://localhost:#{server.address().port}/"
+  server_url = "http://localhost:#{server.address().port}/"
+  console.log "Server now live at #{server_url}"
+
+  if process.platform is 'darwin' and args.openBrowser
+    # Convenience methods!
+    open_process = spawn 'open', [ server_url ], detached: true

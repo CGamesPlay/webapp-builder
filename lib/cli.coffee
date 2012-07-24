@@ -46,6 +46,12 @@ server_parser.addArgument [ '--no-watch' ],
   dest: 'watchFileSystem'
   defaultValue: true
 
+server_parser.addArgument [ '--no-browser' ],
+  help: 'Do not automatically open the browser to the server\'s address.'
+  action: 'storeFalse'
+  dest: 'openBrowser'
+  defaultValue: true
+
 build_parser = subparsers.addParser "build"
   addHelp: yes
   help: 'Build all defined assets.'
