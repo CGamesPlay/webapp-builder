@@ -85,7 +85,7 @@ module.exports = class BuildManager
     @queue.push builder
 
   processQueueJob: (builder, done) =>
-    @reporter.info "Building #{builder.getPath()} using #{builder}"
+    @reporter.debug "Building #{builder.getPath()} using #{builder}"
     builder.doBuild()
     builder.once Builder.BUILD_FINISHED, (b, err) =>
       if err instanceof MissingDependencyError

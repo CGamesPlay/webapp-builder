@@ -18,8 +18,9 @@ common_args = (parser) ->
     help: 'Number of builds to perform simultaneously. Default is number of ' +
           'CPUs.'
     defaultValue: null
-    type: 'int'
     dest: 'concurrency'
+    metavar: 'N'
+    type: 'int'
 
 common_args parser
 
@@ -31,7 +32,7 @@ server_parser = subparsers.addParser 'serve'
   addHelp: yes
   help: 'Run an auto-building web server.'
   description: "Create a web server that serves from the source directory. Any
-    built files requested will automatically be built and served in real time."
+    files requested will automatically be built and served in real time."
 
 common_args server_parser
 

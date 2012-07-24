@@ -42,10 +42,11 @@ exports.ClientManager = class ClientManager
 
     # XXX this might be overriden and doesn't handle dependent makefiles
     if node.getPath() is "Makefile.coffee" or node.getPath() is "Makefile.js"
-      @manager.reporter.info "Reloading makefiles and all clients because " +
+      message = "Reloading makefiles and all clients because " +
         "#{node} was modified..."
+      @manager.reporter.info message
       @manager.reset()
-      c.socket.emit 'refresh' for id, c of @clients
+      c.socket.emit 'refresh', message for id, c of @clients
       return
 
     targets = @manager.findTargetsAffectedBy node
@@ -59,11 +60,11 @@ exports.ClientManager = class ClientManager
     for t in targets
       for dep, dep_list of @knownDeps when dep_list[t.getPath()] or
                                             dep is t.getPath()
-        @manager.reporter.info "Refreshing #{dep} because #{node} " +
-          "has changed, which affects #{t}."
+        message = "Refreshing #{dep} because #{node} has changed, which " +
+          "affects #{t}."
+        @manager.reporter.info message
         for id, c of @clients when c.on_page is dep
-          c.socket.emit 'refresh',
-            "Refreshing page because #{node} changed, which affects #{t}."
+          c.socket.emit 'refresh', message
 
       # Also clear the deps if the target itself changed
       delete @knownDeps[t.getPath()]
