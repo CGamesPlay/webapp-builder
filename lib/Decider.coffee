@@ -34,7 +34,7 @@ exports.Decider = class Decider
 
   # Update the cache of source information
   updateSourceInfoFor: (builder, token = null) ->
-    @savedInfo[builder.getCacheKey()] = token ? @getInfoForSources builder
+    @savedInfo[builder.getCacheKey()] = @getInfoForSources builder, token
 
   hasSourceChanged: (curr, prev) ->
     # Return true if dep is newer than target
@@ -53,11 +53,12 @@ exports.Decider = class Decider
 
     return result
 
-  # Fetch info for all sources of this builder
-  getInfoForSources: (builder) ->
+  # Fetch info for all sources of this builder. If token is given, information
+  # in it will be used instead of collecting information from the file system.
+  getInfoForSources: (builder, token) ->
     info = {}
     save_info = (path) =>
-      info[path] = @getInfoFor @manager.fs.resolve path
+      info[path] = token?[path] ? @getInfoFor @manager.fs.resolve path
 
     for s in builder.sources
       s = s.target if s instanceof Builder
