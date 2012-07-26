@@ -127,6 +127,10 @@ module.exports = class BuildManager
       waiting_on -= 1
       results[b.getPath()] = err
 
+      # Update cache info for this builder
+      @cacheInfo.builders ?= {}
+      @cacheInfo.builders[b.getCacheKey()] = b.getCacheInfo()
+
       if waiting_on is 0
         process.nextTick ->
           done results
