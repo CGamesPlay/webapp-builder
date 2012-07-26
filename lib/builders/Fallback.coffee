@@ -14,14 +14,16 @@ module.exports = class Fallback extends Builder
   getMimeType: -> "text/html"
 
   getData: (next) ->
-    reasons = @enumerateProblems @target.name
-    data = @renderHTML reasons
+    if @options.error
+      data = @render500 @options.error
+    else
+      data = @render404 @target.name
     next null, data
 
   buildToFile: (next) ->
     next new Error "#{@} cannot be built to a file."
 
-  enumerateProblems: (path) ->
+  render404: (path) ->
     reasons = []
     listener = (level, args) ->
       reasons.push level: level, message: util.format args...
@@ -32,21 +34,48 @@ module.exports = class Fallback extends Builder
     finally
       @manager.reporter.removeListener 'log', listener
 
-    reasons
-
-  renderHTML: (reasons) ->
     title = "404 - File not found"
     extra = ""
     if @target.getPath() == "#{@manager.getOption 'targetPath'}/index.html"
       title = "Welcome to webapp!"
       needed_file = @target.getVariantPath()
       extra = "<h2>Create the file #{needed_file} to get started.</h2>"
+    body =
+    """
+    #{extra}
+    <p>
+      The file #{@target.getPath()} could not be built. The following information may be relevant:
+    </p>
+    <ul>
+      #{("<li class=\"level-#{r.level}\">
+            <tt>#{r.message.replace(/</g, '&lt;')}</tt>
+          </li>\n" for r in reasons).join ''}
+    </ul>
+    """
 
+    @renderHTML
+      title: title
+      body: body
+
+  render500: (err) ->
+    @renderHTML
+      title: "500 - Internal server error"
+      body: """
+        <p>
+          The file #{@target.getPath()} encountered an error while building.
+          Error information:
+        </p>
+        <h2>#{err.message}</h2>
+        <pre>#{err.stack.replace(/</g, '&lt;')}</pre>
+        """
+
+
+  renderHTML: (data) ->
     """
     <!DOCTYPE html>
     <html>
     <head>
-    <title>#{title}</title>
+    <title>#{data.title}</title>
     <style type="text/css">
     body {
       background: #ece9e9;
@@ -66,16 +95,8 @@ module.exports = class Fallback extends Builder
     </style>
     </head>
     <body>
-    <h1>#{title}</h1>
-    #{extra}
-    <p>
-      The file #{@target.getPath()} could not be built. The following information may be relevant:
-    </p>
-    <ul>
-      #{("<li class=\"level-#{r.level}\">
-            <tt>#{r.message}</tt>
-          </li>\n" for r in reasons).join ''}
-    </ul>
+    <h1>#{data.title}</h1>
+    #{data.body}
     </body>
     </html>
     """

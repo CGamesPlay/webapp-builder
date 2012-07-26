@@ -56,7 +56,14 @@ exports.middleware = (args) ->
       builder = Builder.createBuilderFor manager, target, missing_files
 
     serve_response = (err, data) ->
-      return next err if err?
+      if err?
+        return next err unless args.fallthrough is false
+
+        res.statusCode = 500
+        builder = new Fallback target, builder, manager: manager, error: err
+        manager.register builder
+        builder.getData (err, fallback_data) -> data = fallback_data
+        throw new Error "Fallback#getData isn't synchronous" unless data?
 
       if builder.getMimeType() is "text/html" and client_manager?
         data = data.toString() + client_manager.getTrailerFor builder
@@ -71,7 +78,7 @@ exports.middleware = (args) ->
       # Now that the rules are definitely set up, we can use BuildManager.make.
       manager.make target, (results) ->
         err = results[target.getPath()]
-        return next err if err?
+        return serve_response err if err?
         target.getData serve_response
 
     else if args.fallthrough is false
