@@ -65,23 +65,13 @@ Builder.registerBuilder class Modulr extends Builder
       builder: @
       paths: [ path.dirname main_node.getPath() ]
 
+    @impliedSources['modulr'] = []
+    @impliedSources['modulr-alternates'] = []
+    @impliedSources['missing'] = []
     resolver = new CustomDependencyResolver config
     module = resolver.createModule main_name
 
     resolver.fromModule module, (err, result) =>
-      @impliedSources['modulr'] = []
-      @impliedSources['modulr-alternates'] = []
-      for name, module of result.modules
-        @impliedSources['modulr'].push @manager.fs.resolve module.relativePath
-        @impliedSources['modulr-alternates'].push p for p in module.triedPaths
-
-      if err instanceof FileNotFoundException
-        @impliedSources['missing'] = []
-        for f in err.filenames
-          @impliedSources['missing'].push @manager.fs.resolve f
-      else
-        delete @impliedSources['missing']
-
       return next err if err?
 
       result.output = modulr_builder.create(config).build result
@@ -103,10 +93,14 @@ class CustomSrcResolver extends SrcResolver
   resolvePath: (relative, module, callback) ->
     try
       { tried, found } = Modulr.resolveModule @manager, relative
+      @builder.impliedSources['modulr'].push found
+      @builder.impliedSources['modulr-alternates'].push p for p in tried
     catch err
+      if err instanceof FileNotFoundException
+        for f in err.filenames
+          @builder.impliedSources['missing'].push @manager.fs.resolve f
       return callback err
 
-    module.triedPaths = tried
     module.relativePath = found.getPath()
     module.ext = module.relativePath.substr module.relativePath.lastIndexOf '.'
 
