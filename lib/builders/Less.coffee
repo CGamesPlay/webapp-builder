@@ -1,7 +1,15 @@
 { Builder } = require '../Builder'
-fs = require 'fs'
+{ FileNotFoundException } = require '../FileSystem'
 path = require 'path'
 less = require 'less'
+
+# Monkey patching!
+original_importer = less.Parser.importer
+less.Parser.importer = (file, paths, callback, env) ->
+  if env.builder?
+    env.builder.customImporter file, paths, callback, env
+  else
+    original_importer file, paths, callback, env
 
 Builder.registerBuilder class Less extends Builder
   @targetSuffix: '.css'
@@ -10,18 +18,81 @@ Builder.registerBuilder class Less extends Builder
   constructor: (target, sources, options) ->
     super target, sources, options
 
-    @config = {}
-
   validateSources: ->
     if @sources.length != 1
       throw new Error "#{@} requires exactly one source."
 
   getData: (next) ->
-    parser = new less.Parser @config
-    @sources[0].getData (err, data) ->
+    parser = new less.Parser
+      builder: @
+      paths: [ path.dirname @sources[0].getPath() ]
+      filename: @sources[0].getPath()
+
+    @sources[0].getData (err, data) =>
       return next err if err?
 
-      parser.parse data.toString(), (err, tree) ->
-        return next err if err?
+      @dealWithLess data.toString(), parser, (err, tree, data) =>
+        if err instanceof FileNotFoundException
+          @impliedSources['less-missing'] =
+            (@manager.fs.resolve f for f in err.filenames)
 
-        next null, tree.toCSS()
+        return next err if err?
+        next null, data
+
+  # Less has horrible exception semantics
+  dealWithLess: (data, parser, next) =>
+    @impliedSources['less'] = []
+
+    try
+      parser.parse data, (err, tree) =>
+        # If next throws it cannot go through less because less will wrap it in
+        # a silly exception type.
+        process.nextTick =>
+          return next @wrapLessError err if err?
+          err = null
+          try
+            css = tree.toCSS()
+          catch caught_err
+            err = @wrapLessError caught_err
+          next err, tree, css
+    catch err
+      # Less both throws and passes errors. Joy.
+      process.nextTick =>
+        return next @wrapLessError err
+
+  customImporter: (file, paths, callback, env) =>
+    for p in paths
+      try
+        node = @manager.fs.resolve path.join p, file
+        node.getReadablePath()
+        break
+      catch _
+        node = null
+
+    unless node?
+      return callback type: 'File', message: new FileNotFoundException file
+
+    @impliedSources['less'].push node
+    node.getData (err, data) ->
+      return callback err if err?
+
+      data = data.toString()
+      parser = new less.Parser
+        paths: [ path.dirname node.getPath() ]
+        filename: node.getPath()
+      parser.parse data, (e, root) ->
+        callback null, root, data
+
+  wrapLessError: (less_info) ->
+    if less_info instanceof Error
+      less_info
+    else if less_info.message instanceof Error
+      less_info.message
+    else
+      new LessError less_info
+
+exports.LessError = class LessError extends Error
+  constructor: (less_info) ->
+    @name = @constructor.name
+    @message = "#{less_info.type}: #{less_info.message}"
+    Error.captureStackTrace @, @constructor

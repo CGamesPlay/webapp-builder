@@ -1,3 +1,4 @@
+{ Buffer } = require 'buffer'
 { FileSystem, FileNotFoundException } = require '../../lib/FileSystem'
 path = require 'path'
 
@@ -14,7 +15,7 @@ exports.FileSystemMock = class FileSystemMock extends FileSystem
         if typeof node is "string"
           new_dir.contents[name] =
             type: 'file'
-            data: node
+            data: new Buffer(node)
             mtime: new Date(2000, 1, @timestamp)
         else unless node.type is 'file'
           new_dir.contents[name] = make_dir node
@@ -72,19 +73,28 @@ class FileSystemMock.Node extends FileSystem.Node
   getDataSync: -> @fs.getFile(@getReadablePath()).data
 
   writeFile: (data, next) ->
+    ex = null
+    try
+      @mockUpdateFile data.toString()
+    catch caught_ex
+      ex = caught_ex
+    process.nextTick ->
+      next ex
+
+  # Synchronous method for updating files. Only available for tests.
+  mockUpdateFile: (data) ->
     dir = path.dirname @getPath()
     file = path.basename @getPath()
     dir_object = @fs.getNode dir
     if dir_object?
-      @fs.timestamp += 1
-      dir_object.contents[file] =
-        type: 'file'
-        data: data
-        mtime: new Date(2000, 1, @fs.timestamp)
-      process.nextTick ->
-        next null
+      if typeof data is 'string'
+        @fs.timestamp += 1
+        data =
+          type: 'file'
+          data: new Buffer(data)
+          mtime: new Date(2000, 1, @fs.timestamp)
+      dir_object.contents[file] = data
     else
-      process.nextTick ->
-        next new FileNotFoundException dir
+      throw new FileNotFoundException dir
 
 exports.FileNotFoundException = FileNotFoundException

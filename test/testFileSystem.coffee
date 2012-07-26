@@ -57,6 +57,21 @@ describe "FileSystemMock.Node", ->
       node = @fs.resolve "404.txt"
       expect(-> node.getReadablePath()).to.throw(FileNotFoundException)
 
+  describe "#isAffectedBy", ->
+    it "is true for identical paths", ->
+      node = @fs.resolve "out/index.js"
+      expect(node.isAffectedBy node).to.equal true
+
+    it "is true for variant paths when the primary does not exist", ->
+      node = @fs.resolve "out/index.html"
+      modified = @fs.resolve "public/index.html"
+      expect(node.isAffectedBy modified).to.equal true
+
+    it "is false for variant paths when the primary exists", ->
+      node = @fs.resolve "out/index.js"
+      modified = @fs.resolve "public/index.js"
+      expect(node.isAffectedBy modified).to.equal false
+
   describe "#writeFile", ->
     it "writes correctly", (next) ->
       node = @fs.resolve "written.txt"
@@ -65,5 +80,5 @@ describe "FileSystemMock.Node", ->
         expect(err).not.to.exist
         node.getData (err, data) ->
           expect(err).not.to.exist
-          expect(data).to.equal content
+          expect(data.toString()).to.equal content
           next()

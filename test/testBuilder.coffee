@@ -1,6 +1,6 @@
 { Builder, MissingDependencyError } = require '../lib/Builder'
 BuildManager = require '../lib/BuildManager'
-{ FileSystemMock } = require './mock/FileSystemMock'
+{ FileSystemMock, FileNotFoundException } = require './mock/FileSystemMock'
 chai = require 'chai'
 
 expect = chai.expect
@@ -12,6 +12,8 @@ describe 'Builder', ->
       "something.coffee": "coffeescript"
       "style.less": "less and junk"
       "module.js": "javascript"
+      "out":
+        "style.css": "/* what css? */"
 
     @manager = new BuildManager
       fileSystem: @fs
@@ -180,5 +182,47 @@ describe 'Builder.Modulr', ->
           # These files were actually used as deps
           @fs.resolve 'something.coffee'
           @fs.resolve 'module.coffee'
+        ]
+        next()
+
+describe 'Builder.Less', ->
+  # This Builder isn't tested, because we can't override the file system
+  # importer safely.
+  beforeEach ->
+    @fs = new FileSystemMock
+      "include.less": "\n"
+      "index.less": "@import 'include';"
+
+    @manager = new BuildManager
+      fileSystem: @fs
+      sourcePath: '.'
+      targetPath: 'out'
+    @include = @fs.resolve 'include.less'
+    @source = @fs.resolve 'index.less'
+    target = @fs.resolve 'out/index.css'
+    @builder = Builder.createBuilderFor @manager, target
+
+  describe "#createBuilderFor", ->
+    it "correctly infers .css to .less", ->
+      expect(@builder).to.exist
+      expect(@builder).to.be.an.instanceof Builder.Less
+
+  describe "#getData", ->
+    it "has the correct sources for compiled files", (next) ->
+      @builder.getData (err, data) =>
+        return next err if err?
+        expect(@builder.impliedSources['less']).to.deep.equal [
+          @fs.resolve 'out/include.less'
+        ]
+        next()
+
+    it "will error correctly for missing files", (next) ->
+      @source.mockUpdateFile '@import "404";'
+      @builder.getData (err, data) =>
+        expect(err).to.exist
+        expect(err).to.be.an.instanceof FileNotFoundException
+
+        expect(@builder.impliedSources['less-missing']).to.deep.equal [
+          @fs.resolve '404.less'
         ]
         next()
