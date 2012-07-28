@@ -24,7 +24,7 @@ exports.ClientManager = class ClientManager
       var socket = io.connect('/webapp');
       socket.on('connect', function() {
         socket.emit('register', {
-          root: "#{builder.getPath()}"
+          root: #{JSON.stringify builder.getPath()}
         });
       });
       socket.on('refresh', function(reason) {
