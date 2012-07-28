@@ -22,8 +22,6 @@ common_args = (parser) ->
     metavar: 'N'
     type: 'int'
 
-common_args parser
-
 subparsers = parser.addSubparsers
   title: 'Valid commands'
   dest: 'command'
@@ -64,12 +62,26 @@ build_parser.addArgument [ 'targets' ],
   nargs: '*'
   metavar: 'target'
 
+monitor_parser = subparsers.addParser 'monitor'
+  addHelp: yes
+  help: 'Run a node program and with refreshing support.'
+  description: "Run the given program. If any of the files included by the
+    program is modified, automatically restart the program."
+
+monitor_parser.addArgument [ 'program' ],
+  help: 'Program to run, with arguments.'
+  nargs: '+'
+
 args = parser.parseArgs()
 
 commands =
   serve: ->
     server = require './server'
     server.standalone args
+  monitor: ->
+    { AppMonitor } = require './AppMonitor'
+    m = new AppMonitor args.program
+    m.start()
   build: ->
     BuildManager = require './BuildManager'
     args.verbose += Reporter.INFO
