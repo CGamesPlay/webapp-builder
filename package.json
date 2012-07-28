@@ -5,6 +5,7 @@
   "bin": {
     "webapp": "./bin/webapp.js"
   },
+  "main": "lib/main.js",
   "dependencies": {
     "argparse": ">=0.1.3",
     "async": ">=0.1.22",
@@ -12,6 +13,7 @@
     "express": "<3",
     "less": ">=1.3.0",
     "mime": ">=1.2.6",
+    "mkdirp": ">=0.3.3",
     "modulr": ">=0.13.0",
     "module-grapher": ">=0.10.4",
     "socket.io": ">=0.9.6",
