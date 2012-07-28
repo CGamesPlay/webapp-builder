@@ -67,7 +67,13 @@ exports.middleware = (args) ->
 
       if builder.getMimeType() is "text/html" and client_manager?
         data = data.toString() + client_manager.getTrailerFor builder
-      res.setHeader 'Content-Type', builder.getMimeType()
+        # Needs to be a buffer, possibly due to a bug in node? Some bytes get
+        # left off if it's a utf-8 string.
+        data = new Buffer data
+
+      content_type = builder.getMimeType()
+      content_type += "; charset=utf-8" if content_type.indexOf('text/') is 0
+      res.setHeader 'Content-Type', content_type
       res.setHeader 'Content-Length', data.length
       res.write data
       res.end()
