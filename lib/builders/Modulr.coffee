@@ -12,24 +12,28 @@ Builder.registerBuilder class Modulr extends Builder
 
   @suffixes = [ '.js', '.coffee' ]
 
-  @resolveModule: (manager, basename, disallow = null) ->
+  @resolveModule: (manager, basename, paths, disallow = null) ->
     # Store a list of all sources that were tried before the current one was
     # found. If one of these files appears in the future, it will override the
     # other one :-X
     tried = []
-    for suffix in Modulr.suffixes
-      try_source = manager.fs.resolve basename + suffix
-      if disallow and try_source.equals(disallow)
-        try_source = manager.fs.resolve try_source.getVariantPath()
-        if try_source.equals(disallow)
-          # We can't compile the output file to itself
-          continue
-      try
-        try_source.getReadablePath()
-        # No exception. Found it!
-        return tried: tried, found: try_source
-      catch _
-        tried.push try_source
+    for dir in paths
+      for suffix in Modulr.suffixes
+        try_source = manager.fs.resolve path.join dir, basename + suffix
+        for i in [1..2]
+          # Try twice because we get the variant the second time
+          unless disallow and try_source.equals(disallow)
+            try
+              try_source.getReadablePath()
+              # No exception. Found it!
+              return tried: tried, found: try_source
+            catch _
+              tried.push try_source
+          variant_path = try_source.getVariantPath()
+          if variant_path is try_source.getPath()
+            # No variant path
+            break
+          try_source = manager.fs.resolve variant_path
 
     err = new FileNotFoundException tried
     err.message = "Module #{basename} not found. " +
@@ -39,7 +43,7 @@ Builder.registerBuilder class Modulr extends Builder
   @createBuilderFor: (manager, target) ->
     basename = path.join path.dirname(target.getPath()),
                          path.basename(target.getPath(), @targetSuffix)
-    { tried, found } = Modulr.resolveModule manager, basename, target
+    { tried, found } = Modulr.resolveModule manager, basename, [ '.' ], target
     builder = new Modulr target, [ found ],
       manager: manager
     builder.impliedSources['alternates'] = tried
@@ -92,7 +96,7 @@ class CustomSrcResolver extends SrcResolver
 
   resolvePath: (relative, module, callback) ->
     try
-      { tried, found } = Modulr.resolveModule @manager, relative
+      { tried, found } = Modulr.resolveModule @manager, relative, @paths
       @builder.impliedSources['modulr'].push found
       @builder.impliedSources['modulr-alternates'].push p for p in tried
     catch err

@@ -59,8 +59,9 @@ describe 'Builder', ->
       expect(missing_files).to.deep.equal [
         # This file would have been served by Copy if it existed
         '404.js'
-        # This one would have been caught by Modulr if it existed
+        # These would have been caught by Modulr if they existed
         'out/404.coffee'
+        '404.coffee'
       ]
 
   describe "#inferTarget", ->
@@ -175,13 +176,15 @@ describe 'Builder.Modulr', ->
 
         expect(@builder.impliedSources['modulr-alternates']).to.deep.equal [
           # These file would have been picked up by Modulr if they existed
+          @fs.resolve 'out/something.js'
           @fs.resolve 'something.js'
+          @fs.resolve 'out/module.js'
           @fs.resolve 'module.js'
         ]
         expect(@builder.impliedSources['modulr']).to.deep.equal [
           # These files were actually used as deps
-          @fs.resolve 'something.coffee'
-          @fs.resolve 'module.coffee'
+          @fs.resolve 'out/something.coffee'
+          @fs.resolve 'out/module.coffee'
         ]
         next()
 
