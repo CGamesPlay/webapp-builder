@@ -16,32 +16,49 @@ exports.Builder = class Builder extends EventEmitter
     @builderList.unshift b
     Builder[b.name] = b
 
-  @createBuilderFor: (manager, target, out_missing_files = null) ->
-    idx = target.getPath().lastIndexOf '.'
-    basename = if idx != -1
-      target.getPath().substr 0, idx
+  # Config is an array of options:
+  #   manager: BuildManager to create for
+  #   target: When combined with target_path, the desired output file.
+  #   out_missing_files: Optional output value that will be filled with the
+  #     alternates list.
+  #   search_path: Where to search for target to use as an input file.
+  #   target_path: When combined with target, the desired output file.
+  @generateBuilder: (config) ->
+    { manager, target, out_missing_files, search_path, target_path } = config
+    search_path = manager.getOption 'sourcePath' unless search_path
+    target_path = manager.getOption 'targetPath' unless target_path
+
+    idx = target.lastIndexOf '.'
+    if idx != -1
+      basename = target.substr 0, idx
+      suffix = target.substr idx
     else
-      target.getPath()
+      basename = target
 
     missing_files_map = {}
 
     builder = null
     for type in @builderList
       try
-        if not type.targetSuffix or
-            target.getPath() is "#{basename}#{type.targetSuffix}"
-          if type.createBuilderFor isnt Builder.createBuilderFor
-            builder = type.createBuilderFor manager, target
+        if not type.targetSuffix or type.targetSuffix is suffix
+          if type.generateBuilder isnt Builder.generateBuilder
+            builder = type.generateBuilder
+              manager: manager
+              target: target
+              out_missing_files: out_missing_files
+              search_path: search_path
+              target_path: target_path
             break if builder?
 
           else if type.targetSuffix?
             unless type.sourceSuffix?
               throw new Error "Builder.#{type.name} does not define a " +
-                "source suffix and does not override createBuilderFor."
+                "source suffix and does not override generateBuilder."
 
             found_source = manager.fs.resolve "#{basename}#{type.sourceSuffix}"
             # This will throw if file not found
             found_source.getReadablePath()
+            target_node = manager.fs.resolve path.join target_path, target
             builder = new type target, [ found_source ],
               manager: manager
             break
@@ -127,6 +144,7 @@ exports.Builder = class Builder extends EventEmitter
     for cat, list of @impliedSources
       for s in list
         @manager.reporter.error "  (#{cat}) #{s}"
+    @
 
   getPath: -> @target.getPath()
 

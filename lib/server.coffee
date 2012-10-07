@@ -23,11 +23,14 @@ exports.middleware = (args) ->
     fallback_builder = new Fallback '%%', [],
       manager: manager
 
-  map_url_to_node = (url_string) ->
+  map_url_to_name = (url_string) ->
     url_string = url.parse(url_string).pathname
     url_string += "index.html" if url_string.substr(-1) == "/"
+    url_string.substring 1
+
+  map_url_to_node = (url_string) ->
     url_string = path.join manager.getOption('targetPath'),
-                    url_string.substring 1
+                           map_url_to_name url_string
     manager.fs.resolve url_string
 
 
@@ -53,14 +56,20 @@ exports.middleware = (args) ->
     builder = manager.resolve target
     missing_files = []
     unless builder?
-      builder = Builder.createBuilderFor manager, target, missing_files
+      builder = Builder.generateBuilder
+        manager: manager
+        target: map_url_to_name req.url
+        out_missing_files: missing_files
 
     serve_response = (err, data) ->
       if err?
         return next err unless args.fallthrough is false
 
         res.statusCode = 500
-        builder = new Fallback target, builder, manager: manager, error: err
+        builder = new Fallback target, builder,
+          manager: manager
+          error: err
+          target_name: map_url_to_name req.url
         manager.register builder
         builder.getData (err, fallback_data) -> data = fallback_data
         throw new Error "Fallback#getData isn't synchronous" unless data?
@@ -89,7 +98,9 @@ exports.middleware = (args) ->
 
     else if args.fallthrough is false
       unless builder?
-        builder = new Fallback target, [ ], manager: manager
+        builder = new Fallback target, [ ],
+          manager: manager
+          target_name: map_url_to_name req.url
         builder.impliedSources['alternates'] =
           (manager.fs.resolve f for f in missing_files)
         manager.register builder

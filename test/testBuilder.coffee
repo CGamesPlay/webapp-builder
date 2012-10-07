@@ -26,41 +26,39 @@ describe 'Builder', ->
     @failure_builder = new Builder.Copy 'out/404.txt', '404.txt',
       manager: @manager
 
-  describe "#createBuilderFor", ->
+  describe "#generateBuilder", ->
     it "correctly infers .css to .less", ->
-      target = @fs.resolve 'out/style.css'
-      builder = Builder.createBuilderFor @manager, target
+      builder = Builder.generateBuilder
+        manager: @manager
+        target: 'style.css'
       expect(builder).to.exist
       expect(builder).to.be.an.instanceof Builder.Less
 
-    it "correctly infers .js to .coffee", ->
-      target = @fs.resolve 'out/something.js'
-      builder = Builder.createBuilderFor @manager, target
-      expect(builder).to.exist
-      expect(builder).to.be.an.instanceof Builder.Modulr
-
     it "correctly infers .js to .js", ->
-      target = @fs.resolve 'out/module.js'
-      builder = Builder.createBuilderFor @manager, target
+      builder = Builder.generateBuilder
+        manager: @manager
+        target: 'module.js'
       expect(builder).to.exist
       expect(builder).to.be.an.instanceof Builder.Modulr
 
     it "correctly infers .txt to .txt", ->
-      target = @fs.resolve 'out/test.txt'
-      builder = Builder.createBuilderFor @manager, target
+      builder = Builder.generateBuilder
+        manager: @manager
+        target: 'test.txt'
       expect(builder).to.exist
       expect(builder).to.be.an.instanceof Builder.Copy
 
     it "lists expected alternates", ->
-      target = @fs.resolve 'out/404.js'
       missing_files = []
-      b = Builder.createBuilderFor @manager, target, missing_files
+      b = Builder.generateBuilder
+        manager: @manager
+        target: '404.js'
+        out_missing_files: missing_files
       expect(b).not.to.exist
       expect(missing_files).to.deep.equal [
-        # This file would have been served by Copy if it existed
+        # This would have been served by Copy if it existed
         '404.js'
-        # These would have been caught by Modulr if they existed
-        'out/404.coffee'
+        # This would have been caught by Modulr if they existed
         '404.coffee'
       ]
 
@@ -156,15 +154,18 @@ describe 'Builder.Modulr', ->
     @fs = new FileSystemMock
       "something.coffee": "require './module'"
       "module.coffee": "javascript"
+      "out":
+        "something.js": "// prebuilt"
 
     @manager = new BuildManager
       fileSystem: @fs
       sourcePath: '.'
       targetPath: 'out'
-    target = @fs.resolve 'out/something.js'
-    @builder = Builder.createBuilderFor @manager, target
+    @builder = Builder.generateBuilder
+      manager: @manager
+      target: 'something.js'
 
-  describe "#createBuilderFor", ->
+  describe "#generateBuilder", ->
     it "correctly infers .js to .coffee", ->
       expect(@builder).to.exist
       expect(@builder).to.be.an.instanceof Builder.Modulr
@@ -174,17 +175,19 @@ describe 'Builder.Modulr', ->
       @builder.getData (err, data) =>
         return next err if err?
 
-        expect(@builder.impliedSources['modulr-alternates']).to.deep.equal [
-          # These file would have been picked up by Modulr if they existed
-          @fs.resolve 'out/something.js'
-          @fs.resolve 'something.js'
-          @fs.resolve 'out/module.js'
-          @fs.resolve 'module.js'
+        sources = for s in @builder.impliedSources['modulr-alternates']
+          s.getPath()
+        expect(sources).to.deep.equal [
+          # These files would have been picked up by Modulr if they existed
+          'something.js'
+          'module.js'
         ]
-        expect(@builder.impliedSources['modulr']).to.deep.equal [
+        sources = for s in @builder.impliedSources['modulr']
+          s.getPath()
+        expect(sources).to.deep.equal [
           # These files were actually used as deps
-          @fs.resolve 'out/something.coffee'
-          @fs.resolve 'out/module.coffee'
+          'something.coffee'
+          'module.coffee'
         ]
         next()
 
@@ -202,10 +205,11 @@ describe 'Builder.Less', ->
       targetPath: 'out'
     @include = @fs.resolve 'include.less'
     @source = @fs.resolve 'index.less'
-    target = @fs.resolve 'out/index.css'
-    @builder = Builder.createBuilderFor @manager, target
+    @builder = Builder.generateBuilder
+      manager: @manager
+      target: 'index.css'
 
-  describe "#createBuilderFor", ->
+  describe "#generateBuilder", ->
     it "correctly infers .css to .less", ->
       expect(@builder).to.exist
       expect(@builder).to.be.an.instanceof Builder.Less
@@ -214,8 +218,10 @@ describe 'Builder.Less', ->
     it "has the correct sources for compiled files", (next) ->
       @builder.getData (err, data) =>
         return next err if err?
-        expect(@builder.impliedSources['less']).to.deep.equal [
-          @fs.resolve 'out/include.less'
+        sources = for s in @builder.impliedSources['less']
+          s.getPath()
+        expect(sources).to.deep.equal [
+          'include.less'
         ]
         next()
 

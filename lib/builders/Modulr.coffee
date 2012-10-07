@@ -40,11 +40,13 @@ Builder.registerBuilder class Modulr extends Builder
       "Tried " + tried.join(', ') + "."
     throw err
 
-  @createBuilderFor: (manager, target) ->
-    basename = path.join path.dirname(target.getPath()),
-                         path.basename(target.getPath(), @targetSuffix)
-    { tried, found } = Modulr.resolveModule manager, basename, [ '.' ], target
-    builder = new Modulr target, [ found ],
+  @generateBuilder: (config) ->
+    { manager, target } = config
+    basename = path.join path.dirname(target),
+                         path.basename(target, @targetSuffix)
+    { tried, found } = Modulr.resolveModule manager, basename, [ '.' ]
+    target_node = path.join config.target_path, target
+    builder = new Modulr target_node, [ found ],
       manager: manager
     builder.impliedSources['alternates'] = tried
     return builder

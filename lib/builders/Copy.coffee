@@ -1,11 +1,14 @@
 { Builder } = require '../Builder'
 { FileSystem } = require '../FileSystem'
+path = require 'path'
 
 Builder.registerBuilder class Copy extends Builder
-  @createBuilderFor: (manager, target) ->
-    variant_node = manager.fs.resolve target.getVariantPath()
-    variant_node.getReadablePath()
-    return new Copy target, [ variant_node ],
+  @generateBuilder: (config) ->
+    { manager, target_path, search_path, target } = config
+    target_node = manager.fs.resolve path.join target_path, target
+    source = manager.fs.resolve path.join search_path, target
+    source.getReadablePath()
+    return new Copy target_node, [ source ],
       manager: manager
 
   validateSources: ->

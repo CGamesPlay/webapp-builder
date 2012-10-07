@@ -139,7 +139,7 @@ module.exports = class BuildManager
       b = @resolve t
       unless b?
         # Try to guess what builder to use
-        b = Builder.createBuilderFor @, t
+        b = Builder.generateBuilder manager: @, target: t.getVariantPath()
 
       if b?
         waiting_on += 1

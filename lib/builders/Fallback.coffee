@@ -29,7 +29,7 @@ module.exports = class Fallback extends Builder
       reasons.push level: level, message: util.format args...
     @manager.reporter.on 'log', listener
     try
-      Builder.createBuilderFor @manager, @target
+      Builder.generateBuilder manager: @manager, target: @options.target_name
 
     finally
       @manager.reporter.removeListener 'log', listener
