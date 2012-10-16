@@ -55,11 +55,13 @@ exports.Builder = class Builder extends EventEmitter
               throw new Error "Builder.#{type.name} does not define a " +
                 "source suffix and does not override generateBuilder."
 
-            found_source = manager.fs.resolve "#{basename}#{type.sourceSuffix}"
+            found_source =
+              manager.fs.resolve path.join search_path,
+                                           "#{basename}#{type.sourceSuffix}"
             # This will throw if file not found
             found_source.getReadablePath()
             target_node = manager.fs.resolve path.join target_path, target
-            builder = new type target, [ found_source ],
+            builder = new type target_node, [ found_source ],
               manager: manager
             break
 
