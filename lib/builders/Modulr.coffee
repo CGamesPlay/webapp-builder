@@ -41,10 +41,10 @@ Builder.registerBuilder class Modulr extends Builder
     throw err
 
   @generateBuilder: (config) ->
-    { manager, target } = config
+    { manager, target, search_path } = config
     basename = path.join path.dirname(target),
                          path.basename(target, @targetSuffix)
-    { tried, found } = Modulr.resolveModule manager, basename, [ '.' ]
+    { tried, found } = Modulr.resolveModule manager, basename, [ search_path ]
     target_node = path.join config.target_path, target
     builder = new Modulr target_node, [ found ],
       manager: manager
