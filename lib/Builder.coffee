@@ -169,6 +169,15 @@ exports.Builder = class Builder extends EventEmitter
   removeListeners: ->
     for s in @sources when s instanceof Builder
       s.removeListener Builder.BUILD_FINISHED, @dependencyFinished
+    @
+
+  addSource: (s) ->
+    s.addListener Builder.BUILD_FINISHED, @dependencyFinished
+    @sources.push s
+
+  removeSource: (s) ->
+    s.removeListener Builder.BUILD_FINISHED, @dependencyFinished
+    @sources = (t for t in @sources when t isnt s)
 
   updateWithOptions: ->
     # Called after the Makefiles have been read and options applied. Useful to
@@ -197,6 +206,7 @@ exports.Builder = class Builder extends EventEmitter
       process.nextTick =>
         if @manager.decider.isBuilderCurrent @
           @manager.reporter.debug "#{@} is up to date."
+          @isActive = no
           @emit Builder.BUILD_FINISHED, @
         else
           @emit Builder.READY_TO_BUILD, @
@@ -238,6 +248,7 @@ exports.Builder = class Builder extends EventEmitter
 
   doBuild: ->
     @buildToFile (err) =>
+      @isActive = no
       @emit Builder.BUILD_FINISHED, @, err
 
   getMimeType: ->
@@ -270,6 +281,17 @@ exports.MissingDependencyError = class MissingDependencyError extends Error
     Error.captureStackTrace @, @constructor
 
   toString: -> "#{@name}: #{@message}\n    #{@innerException}"
+
+exports.DiscoveredNewSourcesError =
+class DiscoveredNewSourcesError extends Error
+  constructor: (@builder, @sources) ->
+    @sources = [ @sources ] unless Array.isArray @sources
+    @name = @constructor.name
+    @message =
+      "Discovered new sources for #{@builder.target} while it was building."
+    Error.captureStackTrace @, @constructor
+
+  toString: -> "#{@name}: #{@message}"
 
 # Import all builders. They self-register.
 require './builders/index'

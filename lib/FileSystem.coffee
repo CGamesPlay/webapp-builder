@@ -49,7 +49,7 @@ class FileSystem.Node extends EventEmitter
 
     variant = @fs.resolve variant_path
     unless variant.exists()
-      throw new FileNotFoundException [ variant.getPath(), @getPath() ]
+      throw new FileNotFoundException [ @getPath(), variant.getPath() ]
 
     return variant.getPath()
 

@@ -1,4 +1,4 @@
-{ Builder, MissingDependencyError } = require './Builder'
+{ Builder, MissingDependencyError, DiscoveredNewSourcesError } = require './Builder'
 { Decider } = require './Decider'
 { FileSystem } = require './FileSystem'
 MakefileProcessor = require './MakefileProcessor'
@@ -86,15 +86,20 @@ module.exports = class BuildManager
 
   processQueueJob: (builder, done) =>
     @reporter.debug "Building #{builder.getPath()} using #{builder}"
-    builder.doBuild()
-    builder.once Builder.BUILD_FINISHED, (b, err) =>
+    finished_handler = (b, err) =>
       if err instanceof MissingDependencyError
         @reporter.warning "Unable to build #{b.getPath()} due to " +
           "previous failures."
+      else if err instanceof DiscoveredNewSourcesError
+        @reporter.debug "Restarting #{b.getPath()} because it discovered new " +
+          "sources."
       else if err
         @reporter.error "Error while building #{b.getPath()}\n#{err.stack}\n"
 
       done()
+
+    builder.doBuild()
+    builder.once Builder.BUILD_FINISHED, finished_handler
 
   register: (builder) ->
     @builders.unshift(builder)
@@ -124,6 +129,11 @@ module.exports = class BuildManager
     waiting_on = 0
 
     target_finished = (b, err) =>
+      if err instanceof DiscoveredNewSourcesError
+        b.queueBuild()
+        b.once Builder.BUILD_FINISHED, target_finished
+        return
+
       waiting_on -= 1
       results[b.getPath()] = err
 

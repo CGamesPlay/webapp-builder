@@ -1,4 +1,4 @@
-{ Builder } = require '../Builder'
+{ Builder, DiscoveredNewSourcesError } = require '../Builder'
 { FileNotFoundException } = require '../FileSystem'
 CoffeeScript = require 'coffee-script'
 { DependencyResolver } = require 'module-grapher/lib/dependency-resolver'
@@ -20,6 +20,11 @@ Builder.registerBuilder class Modulr extends Builder
     for dir in paths
       for suffix in Modulr.suffixes
         try_source = manager.fs.resolve path.join dir, basename + suffix
+
+        try_builder = manager.resolve try_source
+        if try_builder?
+          return tried: tried, found: try_builder
+
         if try_source.exists()
           # Found at the primary path
           return tried: tried, found: try_source
@@ -77,10 +82,15 @@ Builder.registerBuilder class Modulr extends Builder
     @impliedSources['modulr'] = []
     @impliedSources['modulr-alternates'] = []
     @impliedSources['missing'] = []
+    # Get rid of all the detected sources
+    @removeSource s for s, i in @sources when i isnt 0
+
     resolver = new CustomDependencyResolver config
     module = resolver.createModule main_name
 
     resolver.fromModule module, (err, result) =>
+      if err instanceof DiscoveredNewSourcesError
+        @addSource s for s in err.sources when @sources.indexOf(s) == -1
       return next err if err?
 
       result.output = modulr_builder.create(config).build result
@@ -104,11 +114,20 @@ class CustomSrcResolver extends SrcResolver
       { tried, found } = Modulr.resolveModule @manager, relative, @paths
       @builder.impliedSources['modulr'].push found
       @builder.impliedSources['modulr-alternates'].push p for p in tried
+
+      if found instanceof Builder and
+         not @manager.decider.isBuilderCurrent found
+        # We have a generated source that isn't yet generated. Throw an
+        # exception.
+        return callback new DiscoveredNewSourcesError @builder, found
     catch err
       if err instanceof FileNotFoundException
         for f in err.filenames
           @builder.impliedSources['missing'].push @manager.fs.resolve f
       return callback err
+
+    # Make sure we don't rebuild the whole thing
+    found = found.target if found instanceof Builder
 
     module.relativePath = found.getPath()
     module.ext = module.relativePath.substr module.relativePath.lastIndexOf '.'
