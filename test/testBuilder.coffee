@@ -165,6 +165,31 @@ describe 'Builder.Modulr', ->
       manager: @manager
       target: 'something.js'
 
+  describe "#resolveModule", ->
+    it "handles variant paths", ->
+      try
+        Builder.Modulr.resolveModule @manager, "404", [ "out" ]
+      catch err
+        expect(err).to.be.an.instanceof FileNotFoundException
+        sources = (s.getPath() for s in err.filenames)
+        expect(sources).to.deep.equal [
+          "out/404.js"
+          "404.js"
+          "out/404.coffee"
+          "404.coffee"
+        ]
+
+    it "handles regular paths", ->
+      try
+        Builder.Modulr.resolveModule @manager, "404", [ "." ]
+      catch err
+        expect(err).to.be.an.instanceof FileNotFoundException
+        sources = (s.getPath() for s in err.filenames)
+        expect(sources).to.deep.equal [
+          "404.js"
+          "404.coffee"
+        ]
+
   describe "#generateBuilder", ->
     it "correctly infers .js to .coffee", ->
       expect(@builder).to.exist

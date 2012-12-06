@@ -12,7 +12,7 @@ Builder.registerBuilder class Modulr extends Builder
 
   @suffixes = [ '.js', '.coffee' ]
 
-  @resolveModule: (manager, basename, paths, disallow = null) ->
+  @resolveModule: (manager, basename, paths) ->
     # Store a list of all sources that were tried before the current one was
     # found. If one of these files appears in the future, it will override the
     # other one :-X
@@ -20,20 +20,20 @@ Builder.registerBuilder class Modulr extends Builder
     for dir in paths
       for suffix in Modulr.suffixes
         try_source = manager.fs.resolve path.join dir, basename + suffix
-        for i in [1..2]
-          # Try twice because we get the variant the second time
-          unless disallow and try_source.equals(disallow)
-            try
-              try_source.getReadablePath()
-              # No exception. Found it!
-              return tried: tried, found: try_source
-            catch _
-              tried.push try_source
-          variant_path = try_source.getVariantPath()
-          if variant_path is try_source.getPath()
-            # No variant path
-            break
-          try_source = manager.fs.resolve variant_path
+        if try_source.exists()
+          # Found at the primary path
+          return tried: tried, found: try_source
+        else
+          tried.push try_source
+
+        try_variant = manager.fs.resolve try_source.getVariantPath()
+        unless try_source.equals try_variant
+          # Only try variant if it's different
+          if try_variant.exists()
+            # Found at the alternate path
+            return tried: tried, found: try_variant
+          else
+            tried.push try_variant
 
     err = new FileNotFoundException tried
     err.message = "Module #{basename} not found. " +
