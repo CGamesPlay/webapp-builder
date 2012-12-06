@@ -65,11 +65,14 @@ Builder.registerBuilder class Modulr extends Builder
     # Bug in modulr means it won't accept file names
     main_name = main_name.substr 0, main_name.lastIndexOf "."
 
+    global_paths = @manager.getOption "modulrIncludePaths"
+    paths = [ path.dirname main_node.getPath() ].concat global_paths
+
     config =
       environment: 'development'
       manager: @manager
       builder: @
-      paths: [ path.dirname main_node.getPath() ]
+      paths: paths
 
     @impliedSources['modulr'] = []
     @impliedSources['modulr-alternates'] = []

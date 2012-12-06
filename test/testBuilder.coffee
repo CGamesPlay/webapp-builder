@@ -154,13 +154,17 @@ describe 'Builder.Modulr', ->
     @fs = new FileSystemMock
       "something.coffee": "require './module'"
       "module.coffee": "javascript"
+      "test-vendor.coffee": "require 'underscore'"
       "out":
         "something.js": "// prebuilt"
+      "vendor":
+        "underscore.js": "// using search paths"
 
     @manager = new BuildManager
       fileSystem: @fs
       sourcePath: '.'
       targetPath: 'out'
+      modulrIncludePaths: [ "vendor" ]
     @builder = Builder.generateBuilder
       manager: @manager
       target: 'something.js'
@@ -200,13 +204,6 @@ describe 'Builder.Modulr', ->
       @builder.getData (err, data) =>
         return next err if err?
 
-        sources = for s in @builder.impliedSources['modulr-alternates']
-          s.getPath()
-        expect(sources).to.deep.equal [
-          # These files would have been picked up by Modulr if they existed
-          'something.js'
-          'module.js'
-        ]
         sources = for s in @builder.impliedSources['modulr']
           s.getPath()
         expect(sources).to.deep.equal [
@@ -214,6 +211,31 @@ describe 'Builder.Modulr', ->
           'something.coffee'
           'module.coffee'
         ]
+        sources = for s in @builder.impliedSources['modulr-alternates']
+          s.getPath()
+        expect(sources).to.deep.equal [
+          # These files would have been picked up by Modulr if they existed
+          'something.js'
+          'module.js'
+        ]
+        next()
+
+    it "handles search paths", (next) ->
+      @builder = Builder.generateBuilder
+        manager: @manager
+        target: "test-vendor.js"
+
+      @builder.getData (err, data) =>
+        return next err if err?
+
+        sources = for s in @builder.impliedSources['modulr']
+          s.getPath()
+        expect(sources).to.deep.equal [
+          # These files would have been picked up by Modulr if they existed
+          'test-vendor.coffee'
+          'vendor/underscore.js'
+        ]
+
         next()
 
 describe 'Builder.Less', ->
