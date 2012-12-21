@@ -4,8 +4,11 @@ watchr = require 'watchr'
 
 exports.AppMonitor = class AppMonitor
   @RESTART_DELAY = 250
+  @IS_CHILD = no
 
   @main: =>
+    @IS_CHILD = yes
+
     module = path.resolve process.argv[2]
     # Fix up argv so it looks like nothing is going on
     process.argv.splice 1, 1

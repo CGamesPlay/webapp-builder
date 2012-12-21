@@ -40,15 +40,6 @@ exports.ClientManager = class ClientManager
   fileModified: (event, node, stat, old_stat) =>
     # event is one of new, unlink, change
 
-    # XXX this might be overriden and doesn't handle dependent makefiles
-    if node.getPath() is "Makefile.coffee" or node.getPath() is "Makefile.js"
-      message = "Reloading makefiles and all clients because " +
-        "#{node} was modified..."
-      @manager.reporter.info message
-      @manager.reset()
-      c.socket.emit 'refresh', message for id, c of @clients
-      return
-
     targets = @manager.findTargetsAffectedBy node
 
     for t in targets when t.isDynamicallyGenerated

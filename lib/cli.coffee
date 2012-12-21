@@ -1,3 +1,4 @@
+{ AppMonitor } = require './AppMonitor'
 ArgumentParser = require('argparse').ArgumentParser
 Reporter = require './Reporter'
 path = require 'path'
@@ -76,10 +77,14 @@ args = parser.parseArgs()
 
 commands =
   serve: ->
-    server = require './server'
-    server.standalone args
+    # Set up monitoring if necessary
+    if AppMonitor.IS_CHILD
+      server = require './server'
+      server.standalone args
+    else
+      m = new AppMonitor process.argv.slice 1
+      m.start()
   monitor: ->
-    { AppMonitor } = require './AppMonitor'
     m = new AppMonitor args.program
     m.start()
   build: ->
