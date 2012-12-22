@@ -56,6 +56,10 @@ describe 'Builder.Modulr', ->
           "404.coffee"
         ]
 
+    it "handles built sources", ->
+      { tried, found } =
+        Builder.Modulr.resolveModule @manager, "built", [ "out" ]
+
   describe "#queueBuild", ->
     it "can build with discovered sources", (next) ->
       @manager.make 'out/uses-built.js', (results) =>

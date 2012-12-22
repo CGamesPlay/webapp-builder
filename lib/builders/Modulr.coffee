@@ -65,13 +65,15 @@ Builder.registerBuilder class Modulr extends Builder
       return next new Error "#{@} cannot compile itself."
 
     main_node = @sources[0]
+    search_path = @manager.getOption 'sourcePath'
+    target_path = @manager.getOption 'targetPath'
 
-    main_name = path.basename main_node.getPath()
+    main_name = path.relative search_path, main_node.getPath()
     # Bug in modulr means it won't accept file names
     main_name = main_name.substr 0, main_name.lastIndexOf "."
 
     global_paths = @manager.getOption "modulrIncludePaths"
-    paths = [ path.dirname main_node.getPath() ].concat global_paths
+    paths = [ search_path, target_path ].concat global_paths
 
     config =
       environment: 'development'
