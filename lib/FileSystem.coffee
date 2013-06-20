@@ -64,7 +64,7 @@ class FileSystem.Node extends EventEmitter
       return @getVariantPath() is other.getPath()
     false
 
-  exists: -> path.existsSync @getPath()
+  exists: -> fs.existsSync @getPath()
   unlink: (next) -> fs.unlink @getPath(), next
   getStat: -> fs.statSync @getReadablePath()
   getData: (next) -> fs.readFile @getReadablePath(), next

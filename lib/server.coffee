@@ -5,6 +5,7 @@ BuildManager = require './BuildManager'
 Fallback = require './builders/Fallback'
 Reporter = require './Reporter'
 express = require 'express'
+http = require 'http'
 path = require 'path'
 socketio = require 'socket.io'
 { spawn } = require 'child_process'
@@ -126,15 +127,16 @@ exports.standalone = (args) ->
   # -v and -q will shift the log level from the default
   args.verbose = args.verbose + Reporter.INFO
 
-  app = express.createServer()
-  args.socketIOManager = socketio.listen app,
+  app = express()
+  server = http.createServer app
+  args.socketIOManager = socketio.listen server,
     'log level': 1
 
   app.use exports.middleware args
   app.use express.errorHandler
     showStack: true
 
-  server = app.listen args.port
+  server.listen args.port
   server_url = "http://localhost:#{server.address().port}/"
   console.log "Server now live at #{server_url}"
 

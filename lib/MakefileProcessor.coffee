@@ -11,7 +11,7 @@ module.exports = class MakefileProcessor
 
   # Autodetect a Makefile if it exists and source it.
   loadDefault: ->
-    for ext in [ '.coffee', '.js' ] when path.existsSync "Makefile#{ext}"
+    for ext in [ '.coffee', '.js' ] when fs.existsSync "Makefile#{ext}"
       @loadFile "Makefile#{ext}"
       break
     @
