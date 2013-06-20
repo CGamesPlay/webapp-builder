@@ -2,8 +2,15 @@
 ArgumentParser = require('argparse').ArgumentParser
 Reporter = require './Reporter'
 path = require 'path'
+fs = require 'fs'
+
+get_version = ->
+  package_json = path.join __dirname, "../package.json"
+  package_info = JSON.parse fs.readFileSync package_json, "utf-8"
+  package_info.version
 
 parser = new ArgumentParser
+  version: get_version()
   addHelp: yes
   description: 'Command-line frontend to bootstrap making web applications.'
 
