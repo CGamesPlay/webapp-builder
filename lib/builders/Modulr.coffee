@@ -72,8 +72,9 @@ Builder.registerBuilder class Modulr extends Builder
     # Bug in modulr means it won't accept file names
     main_name = main_name.substr 0, main_name.lastIndexOf "."
 
+    paths = [ search_path, target_path ]
     global_paths = @manager.getOption "modulrIncludePaths"
-    paths = [ search_path, target_path ].concat global_paths
+    paths = paths.concat global_paths if global_paths
 
     config =
       environment: 'development'
