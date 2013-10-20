@@ -3,5 +3,6 @@
 require './Copy'
 
 require './AppCache'
+require './AutoRefresh'
 require './Less'
 require './Modulr'

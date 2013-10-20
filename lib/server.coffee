@@ -19,6 +19,7 @@ exports.middleware = (args) ->
 
   if args.watchFileSystem
     client_manager = new ClientManager manager, args.socketIOManager
+    manager.clientManager = client_manager
 
   if args.fallthrough is false
     fallback_builder = new Fallback '%%', [],
@@ -35,11 +36,6 @@ exports.middleware = (args) ->
     manager.fs.resolve url_string
 
   static_server = express.static path.resolve manager.getOption 'targetPath'
-
-  put_trailer_on = (builder) ->
-    return client_manager? and
-           builder instanceof Builder and
-           builder.getMimeType() is 'text/html'
 
   middleware = (req, res, next) ->
     target = map_url_to_node req.url
@@ -81,12 +77,6 @@ exports.middleware = (args) ->
         builder.getData (err, fallback_data) -> data = fallback_data
         throw new Error "Fallback#getData isn't synchronous" unless data?
 
-      if put_trailer_on builder
-        data = data.toString() + client_manager.getTrailerFor builder
-        # Needs to be a buffer, possibly due to a bug in node? Some bytes get
-        # left off if it's a utf-8 string.
-        data = new Buffer data
-
       content_type = builder.getMimeType()
       content_type += "; charset=utf-8" if content_type.indexOf('text/') is 0
       res.setHeader 'Content-Type', content_type
@@ -101,11 +91,7 @@ exports.middleware = (args) ->
       manager.make target, (results) ->
         err = results[target.getPath()]
         return serve_response err if err?
-        if put_trailer_on builder
-          # Can't cache this
-          target.getData serve_response
-        else
-          static_server req, res, next
+        static_server req, res, next
 
     else if args.fallthrough is false
       unless builder?
