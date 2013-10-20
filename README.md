@@ -39,17 +39,18 @@ Programmatic Usage
 If you ware developing a dynamic website build would like to take advantage of the automatic compilation and packaging that webapp provides, you can use it via the API.
 
 ```javascript
-var webapp = require('webapp-builder');
 var express = require('express');
+var http = require('http');
+var webapp = require('webapp-builder');
 
 var app = express();
-app.use(app.router);
-app.use(webapp.middleware({
-    watchFileSystem: true,
-    fallthrough: false
-});
+var server = http.createServer(app);
+var my_webapp = (new webapp.Server())
+  .setFallthrough(false)
+  .autoRefreshUsingServer(server);
+app.use(my_webapp.middleware);
 
-app.listen(process.env.PORT || 5000);
+server.listen(8080);
 ```
 
 [this screencast]: https://vimeo.com/68808324

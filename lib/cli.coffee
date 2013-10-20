@@ -50,7 +50,7 @@ server_parser.addArgument [ '-p', '--port' ],
 server_parser.addArgument [ '--no-watch' ],
   help: 'Disable watching the file system for changes and auto-refresh.'
   action: 'storeFalse'
-  dest: 'watchFileSystem'
+  dest: 'watchFilesystem'
   defaultValue: true
 
 server_parser.addArgument [ '--no-browser' ],
@@ -81,22 +81,44 @@ monitor_parser.addArgument [ 'program' ],
   nargs: '+'
 
 args = parser.parseArgs()
+args.verbose += Reporter.INFO
 
 commands =
   serve: ->
     # Set up monitoring if necessary
     if AppMonitor.IS_CHILD
-      server = require './server'
-      server.standalone args
+      Server = require './Server'
+      express = require 'express'
+      http = require 'http'
+      { spawn } = require 'child_process'
+
+      app = express()
+      server = http.createServer app
+      webapp_server = new Server args
+      webapp_server.setFallthrough no
+      webapp_server.autoRefreshUsingServer server if args.watchFilesystem
+
+      app.use webapp_server.middleware
+      app.use express.errorHandler
+        showStack: true
+
+      server.listen args.port
+      server_url = "http://localhost:#{server.address().port}/"
+      console.log "Server now live at #{server_url}"
+
+      if process.platform is 'darwin' and args.openBrowser
+        # Convenience methods!
+        open_process = spawn 'open', [ server_url ], detached: true
     else
       m = new AppMonitor process.argv.slice 1
       m.start()
+
   monitor: ->
     m = new AppMonitor args.program
     m.start()
+
   build: ->
     BuildManager = require './BuildManager'
-    args.verbose += Reporter.INFO
     m = new BuildManager args
     m.make args.targets, (results) ->
       m.saveCache()
