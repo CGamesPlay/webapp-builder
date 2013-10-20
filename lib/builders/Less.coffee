@@ -5,11 +5,11 @@ less = require 'less'
 
 # Monkey patching!
 original_importer = less.Parser.importer
-less.Parser.importer = (file, paths, callback, env) ->
+less.Parser.importer = (file, info, callback, env) ->
   if env.builder?
-    env.builder.customImporter file, paths, callback, env
+    env.builder.customImporter file, info, callback, env
   else
-    original_importer file, paths, callback, env
+    original_importer file, info, callback, env
 
 Builder.registerBuilder class Less extends Builder
   @targetSuffix: '.css'
@@ -23,10 +23,11 @@ Builder.registerBuilder class Less extends Builder
       throw new Error "#{@} requires exactly one source."
 
   getData: (next) ->
-    parser = new less.Parser
-      builder: @
+    env = new less.tree.parseEnv
       paths: [ path.dirname @sources[0].getPath() ]
       filename: @sources[0].getPath()
+    env.builder = @
+    parser = new less.Parser env
 
     @sources[0].getData (err, data) =>
       return next err if err?
@@ -60,8 +61,8 @@ Builder.registerBuilder class Less extends Builder
       process.nextTick =>
         return next @wrapLessError err
 
-  customImporter: (file, paths, callback, env) =>
-    for p in paths
+  customImporter: (file, info, callback, env) =>
+    for p in [info.currentDirectory].concat env.paths
       try
         node = @manager.fs.resolve path.join p, file
         node.getReadablePath()
@@ -83,10 +84,10 @@ Builder.registerBuilder class Less extends Builder
       parser.parse data, (e, root) ->
         callback null, root, data
 
+  # Either unwraps an existing Error from Less, or wraps a less error in an
+  # error that has a real stack trace.
   wrapLessError: (less_info) ->
-    if less_info instanceof Error
-      less_info
-    else if less_info.message instanceof Error
+    if less_info.message instanceof Error
       less_info.message
     else
       new LessError less_info
