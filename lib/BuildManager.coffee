@@ -147,10 +147,6 @@ module.exports = class BuildManager
 
     for t in targets
       b = @resolve t
-      unless b?
-        # Try to guess what builder to use
-        b = Builder.generateBuilder manager: @, target: t.getVariantPath()
-
       if b?
         waiting_on += 1
         b.queueBuild()

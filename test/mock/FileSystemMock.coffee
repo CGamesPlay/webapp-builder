@@ -56,13 +56,14 @@ exports.FileSystemMock = class FileSystemMock extends FileSystem
 
 class FileSystemMock.Node extends FileSystem.Node
   exists: ->
-    !!@fs.getFile @getPath()
+    !!@fs.getNode @getPath()
 
   getStat: ->
-    file = @fs.getFile @getReadablePath()
+    file = @fs.getNode @getReadablePath()
     stat =
-      size: file.data.length
+      size: file.data?.length
       mtime: file.mtime
+      isDirectory: -> file.type is 'dir'
 
   getData: (next) ->
     try

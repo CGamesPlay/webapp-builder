@@ -20,8 +20,32 @@ module.exports = class Server
     server.middleware
 
   constructor: (args) ->
+    @fallthrough = yes
     @manager = new BuildManager args
     @staticServer = express.static path.resolve @manager.getOption 'targetPath'
+    @reset()
+
+    # Default server rules
+    @addRule new Server.Rule
+      target: '/%'
+      builder: Builder.Copy
+      source: '%'
+    @addRule new Server.Rule
+      target: '/%.html'
+      builder: Builder.AutoRefresh
+      source: '%.html'
+    @addRule new Server.Rule
+      target: '/%.css'
+      builder: Builder.Less
+      source: '%.less'
+    @addRule new Server.Rule
+      target: '/%.js'
+      builder: Builder.Modulr
+      source: '%.coffee'
+
+  reset: ->
+    @rules = []
+    @
 
   setFallthrough: (@fallthrough) ->
     @
@@ -34,15 +58,48 @@ module.exports = class Server
   autoRefreshUsingServer: (server) ->
     @autoRefreshUsingSocketIO socketio.listen server,
       'log level': 1
+    @
 
-  mapURLToName: (url_string) ->
+  addRule: (rule) ->
+    rule.addTargetPrefix @manager.getOption('targetPath')
+    @rules.unshift rule
+    @
+
+  generateBuilder: (target) ->
+    target = @manager.fs.resolve target
+    missing_files = []
+    for rule in @rules when rule.matches target.getPath()
+      possibility = rule.getSourcePaths target.getPath()
+      nodes = (@manager.fs.resolve p for p in possibility)
+      missing_here = (n for n in nodes when not n.exists())
+      if missing_here.length == 0
+        builder = new rule.builder target, nodes,
+          manager: @manager
+        builder.impliedSources['alternates'] = missing_files
+        return builder
+      else
+        @manager.reporter.verbose "Builder #{rule.builder.name} is missing " +
+          (n.getPath() for n in missing_here).join(", ")
+        missing_files = missing_files.concat nodes
+
+    # At this point, no rules were available to build this file.
+    unless @fallthrough
+      builder = new Fallback target, [ ],
+        server: @
+        manager: @manager,
+        target_name: target.getPath()
+      builder.impliedSources['alternates'] = missing_files
+      return builder
+    null
+
+  transformURL: (url_string) ->
     url_string = url.parse(url_string).pathname
     url_string += "index.html" if url_string.substr(-1) == "/"
     url_string.substring 1
 
   mapURLToNode: (url_string) ->
     url_string = path.join @manager.getOption('targetPath'),
-                           @mapURLToName url_string
+                           @transformURL url_string
     @manager.fs.resolve url_string
 
   middleware: (req, res, next) =>
@@ -50,7 +107,7 @@ module.exports = class Server
 
     if target.exists() and
        target.getStat().isDirectory() and
-       request_url.substr(-1) != "/"
+       req.url.substr(-1) != "/"
       # For directories, redirect to the trailing / form. This will cause us
       # to realize we are dealing with a directory and serve index.html
       # appropriately.
@@ -67,10 +124,8 @@ module.exports = class Server
     builder = @manager.resolve target
     missing_files = []
     unless builder?
-      builder = Builder.generateBuilder
-        manager: @manager
-        target: @mapURLToName req.url
-        out_missing_files: missing_files
+      builder = @generateBuilder target
+      @manager.register builder if builder?
 
     serve_response = (err, data) =>
       if err?
@@ -78,9 +133,10 @@ module.exports = class Server
 
         res.statusCode = 500
         builder = new Fallback target, builder,
+          server: @
           manager: @manager
           error: err
-          target_name: @mapURLToName req.url
+          target_name: @transformURL req.url
         @manager.register builder
         builder.getData (err, fallback_data) -> data = fallback_data
         throw new Error "Fallback#getData isn't synchronous" unless data?
@@ -102,16 +158,39 @@ module.exports = class Server
         @staticServer req, res, next
 
     else if @fallthrough is false
-      unless builder?
-        builder = new Fallback target, [ ],
-          manager: @manager
-          target_name: @mapURLToName req.url
-        builder.impliedSources['alternates'] =
-          (@manager.fs.resolve f for f in missing_files)
-        @manager.register builder
-
       res.statusCode = 404
       builder.getData serve_response
 
     else
       next()
+
+class Server.Rule
+  constructor: (config) ->
+    { @builder, @source } = config
+    @source = [ @source ] unless @source instanceof Array
+    @patternLength = config.target.length
+    @patternParts = config.target.split '%'
+    if @patternParts.length > 2
+      throw new Error 'Invalid target pattern'
+
+  addTargetPrefix: (prefix) ->
+    @patternParts[0] = path.join prefix, @patternParts[0]
+
+  matches: (path) ->
+    return false unless path.length >= @patternLength
+    matches_start = path.substr(0, @patternParts[0].length) is @patternParts[0]
+    if @patternParts.length > 1 and @patternParts[1].length > 0
+      matches_end = path.substr(-@patternParts[1].length) is @patternParts[1]
+      return matches_start and matches_end
+    else
+      return matches_start
+
+  wildcardPortion: (path) ->
+    if @patternParts.length > 1 and @patternParts[1].length > 0
+      path.substring @patternParts[0].length,
+                           path.length - @patternParts[1].length
+    else
+      path.substring @patternParts[0].length
+
+  getSourcePaths: (path) ->
+    s.replace '%', @wildcardPortion path for s in @source

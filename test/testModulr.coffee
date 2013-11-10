@@ -24,9 +24,8 @@ describe 'Builder.Modulr', ->
       modulrIncludePaths: [ "vendor" ]
     @dummy_builder = new Builder.Copy 'out/built.coffee', 'test-vendor.coffee',
       manager: @manager
-    @builder = Builder.generateBuilder
+    @builder = new Builder.Modulr 'out/something.js', 'something.coffee',
       manager: @manager
-      target: 'something.js'
     @manager
       .register(@dummy_builder)
       .register(@builder)
@@ -62,14 +61,12 @@ describe 'Builder.Modulr', ->
 
   describe "#queueBuild", ->
     it "can build with discovered sources", (next) ->
+      builder = new Builder.Modulr 'out/uses-built.js', 'uses-built.coffee',
+        manager: @manager
+      @manager.register builder
       @manager.make 'out/uses-built.js', (results) =>
         return next err for t, err of results when err?
         next()
-
-  describe "#generateBuilder", ->
-    it "correctly infers .js to .coffee", ->
-      expect(@builder).to.exist
-      expect(@builder).to.be.an.instanceof Builder.Modulr
 
   describe "#getData", ->
     it "finishes with the expected sources", (next) ->
@@ -93,9 +90,8 @@ describe 'Builder.Modulr', ->
         next()
 
     it "handles search paths", (next) ->
-      @builder = Builder.generateBuilder
+      @builder = new Builder.Modulr 'test-vendor.js', 'test-vendor.coffee',
         manager: @manager
-        target: "test-vendor.js"
 
       @builder.getData (err, data) =>
         return next err if err?

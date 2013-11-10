@@ -9,83 +9,10 @@ exports.Builder = class Builder extends EventEmitter
   @BUILD_FINISHED = "BUILD_FINISHED"
 
   @builderTypes: {}
-  @builderList: []
 
   @registerBuilder: (b) ->
     @builderTypes[b.name] = b
-    @builderList.unshift b
     Builder[b.name] = b
-
-  # Config is an array of options:
-  #   manager: BuildManager to create for
-  #   target: When combined with target_path, the desired output file.
-  #   out_missing_files: Optional output value that will be filled with the
-  #     alternates list.
-  #   search_path: Where to search for target to use as an input file.
-  #   target_path: When combined with target, the desired output file.
-  @generateBuilder: (config) ->
-    { manager, target, out_missing_files, search_path, target_path } = config
-    search_path = manager.getOption 'sourcePath' unless search_path
-    target_path = manager.getOption 'targetPath' unless target_path
-
-    idx = target.lastIndexOf '.'
-    if idx != -1
-      basename = target.substr 0, idx
-      suffix = target.substr idx
-    else
-      basename = target
-
-    missing_files_map = {}
-
-    builder = null
-    for type in @builderList
-      try
-        if not type.targetSuffix or type.targetSuffix is suffix
-          if type.generateBuilder isnt Builder.generateBuilder
-            builder = type.generateBuilder
-              manager: manager
-              target: target
-              out_missing_files: out_missing_files
-              search_path: search_path
-              target_path: target_path
-            break if builder?
-
-          else if type.targetSuffix?
-            unless type.sourceSuffix?
-              throw new Error "Builder.#{type.name} does not define a " +
-                "source suffix and does not override generateBuilder."
-
-            found_source =
-              manager.fs.resolve path.join search_path,
-                                           "#{basename}#{type.sourceSuffix}"
-            # This will throw if file not found
-            found_source.getReadablePath()
-            target_node = manager.fs.resolve path.join target_path, target
-            builder = new type target_node, [ found_source ],
-              manager: manager
-            break
-
-      catch err
-        if err instanceof FileNotFoundException
-          for f in err.filenames
-            missing_files_map[f] = true
-          manager.reporter.verbose "Builder.#{type.name} cannot build " +
-              "#{target} because: #{err.message}"
-
-        else
-          manager.reporter.error "Error while creating builder for " +
-            "#{target}: #{err}"
-
-    missing_files = Object.keys(missing_files_map)
-    out_missing_files?.splice -1, 0, missing_files...
-    if builder?
-      missing_sources = (manager.fs.resolve f for f in missing_files)
-      builder.isDynamicallyGenerated = yes
-      alternates = builder.impliedSources['alternates'] ?= []
-      alternates.splice -1, 0, missing_sources...
-      manager.register builder
-      builder.updateWithOptions()
-    builder
 
   # Usage:
   # parseArguments([ TARGET, SOURCES, OPTIONS ])

@@ -26,42 +26,6 @@ describe 'Builder', ->
     @failure_builder = new Builder.Copy 'out/404.txt', '404.txt',
       manager: @manager
 
-  describe "#generateBuilder", ->
-    it "correctly infers .css to .less", ->
-      builder = Builder.generateBuilder
-        manager: @manager
-        target: 'style.css'
-      expect(builder).to.exist
-      expect(builder).to.be.an.instanceof Builder.Less
-
-    it "correctly infers .js to .js", ->
-      builder = Builder.generateBuilder
-        manager: @manager
-        target: 'module.js'
-      expect(builder).to.exist
-      expect(builder).to.be.an.instanceof Builder.Modulr
-
-    it "correctly infers .txt to .txt", ->
-      builder = Builder.generateBuilder
-        manager: @manager
-        target: 'test.txt'
-      expect(builder).to.exist
-      expect(builder).to.be.an.instanceof Builder.Copy
-
-    it "lists expected alternates", ->
-      missing_files = []
-      b = Builder.generateBuilder
-        manager: @manager
-        target: '404.js'
-        out_missing_files: missing_files
-      expect(b).not.to.exist
-      expect(missing_files).to.deep.equal [
-        # This would have been served by Copy if it existed
-        '404.js'
-        # This would have been caught by Modulr if they existed
-        '404.coffee'
-      ]
-
   describe "#inferTarget", ->
     class WithSuffix extends Builder
       @targetSuffix: '.js'
@@ -163,14 +127,8 @@ describe 'Builder.Less', ->
       targetPath: 'out'
     @include = @fs.resolve 'include.less'
     @source = @fs.resolve 'index.less'
-    @builder = Builder.generateBuilder
+    @builder = new Builder.Less 'index.css', 'index.less',
       manager: @manager
-      target: 'index.css'
-
-  describe "#generateBuilder", ->
-    it "correctly infers .css to .less", ->
-      expect(@builder).to.exist
-      expect(@builder).to.be.an.instanceof Builder.Less
 
   describe "#getData", ->
     it "has the correct sources for compiled files", (next) ->
