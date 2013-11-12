@@ -21,27 +21,23 @@ module.exports = class Server
 
   constructor: (args) ->
     @fallthrough = yes
+    @reset()
+    # XXX - note that the constructor for BuildManager immediately loads the
+    # makefiles, meaning that this object will be partially constructed during
+    # that time.
+    args.server = @
     @manager = new BuildManager args
     @staticServer = express.static path.resolve @manager.getOption 'targetPath'
-    @reset()
+    @didPostInit = no
+    @postInitialize()
 
-    # Default server rules
-    @addRule new Server.Rule
-      target: '/%'
-      builder: Builder.Copy
-      source: '%'
-    @addRule new Server.Rule
-      target: '/%.html'
-      builder: Builder.AutoRefresh
-      source: '%.html'
-    @addRule new Server.Rule
-      target: '/%.css'
-      builder: Builder.Less
-      source: '%.less'
-    @addRule new Server.Rule
-      target: '/%.js'
-      builder: Builder.Modulr
-      source: '%.coffee'
+  # This method is called after the Makefiles have been loaded. Needed to fix up
+  # the targetPath of the rules.
+  postInitialize: ->
+    for r, i in @rules
+      @rules[i].addTargetPrefix @manager.getOption 'targetPath'
+    @didPostInit = yes
+    @
 
   reset: ->
     @rules = []
@@ -61,7 +57,10 @@ module.exports = class Server
     @
 
   addRule: (rule) ->
-    rule.addTargetPrefix @manager.getOption('targetPath')
+    unless rule instanceof Server.Rule
+      rule = new Server.Rule rule
+    if @didPostInit
+      rule.addTargetPrefix @manager.getOption 'targetPath'
     @rules.unshift rule
     @
 
@@ -85,7 +84,6 @@ module.exports = class Server
     # At this point, no rules were available to build this file.
     unless @fallthrough
       builder = new Fallback target, [ ],
-        server: @
         manager: @manager,
         target_name: target.getPath()
       builder.impliedSources['alternates'] = missing_files
@@ -133,7 +131,6 @@ module.exports = class Server
 
         res.statusCode = 500
         builder = new Fallback target, builder,
-          server: @
           manager: @manager
           error: err
           target_name: @transformURL req.url

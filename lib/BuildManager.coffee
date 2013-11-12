@@ -12,6 +12,7 @@ module.exports = class BuildManager
     cacheFilename: '.webapp-cache.json'
     concurrency: require('os').cpus().length
     deciderType: 'MD5'
+    env: process.env.NODE_ENV ? 'development'
     sourcePath: '.'
     targetPath: 'out'
     verbose: Reporter.WARNING
@@ -23,8 +24,19 @@ module.exports = class BuildManager
     @reporter = new Reporter
       logLevel: @getOption 'verbose'
     @queue = async.queue @processQueueJob, 1
-    @loadCache()
+    @server = @externalOptions.server
+    delete @externalOptions.server
+    @makefileProcessor = new MakefileProcessor @
     @reset()
+
+    @makefileProcessor.loadBuiltin()
+    if @getOption('file')?
+      @makefileProcessor.loadFile @getOption 'file'
+    else
+      @makefileProcessor.loadDefault()
+    @reporter.verbose "Done loading makefiles.\n"
+
+    @loadCache()
 
   reset: ->
     if @queue.length() isnt 0
@@ -37,11 +49,6 @@ module.exports = class BuildManager
 
     @effectiveOptions = {}
     @builders = []
-    @makefileProcessor = new MakefileProcessor @
-    if @getOption('file')?
-      @makefileProcessor.loadFile @getOption 'file'
-    else
-      @makefileProcessor.loadDefault()
 
     @fs.setVariantDir @getOption('targetPath'), @getOption('sourcePath')
     @reporter.setLogLevel @getOption 'verbose'
@@ -51,8 +58,6 @@ module.exports = class BuildManager
 
     for b in @builders
       b.updateWithOptions()
-
-    @reporter.verbose "Done loading makefiles.\n"
 
   getOption: (opt) ->
     @effectiveOptions[opt] ?

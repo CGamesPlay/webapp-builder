@@ -30,6 +30,7 @@ describe 'Server', ->
           "index.html": "Index!"
       @server = new Server
         fileSystem: @fs
+      @server.addRule target: '/%', builder: Builder.Copy, source: '%'
       @server.setFallthrough no
 
     it "appends / to directories", (next) ->
@@ -50,19 +51,24 @@ describe 'Server', ->
     beforeEach ->
       @fs = new FileSystemMock
         "index.html": "HTML file"
-        "copy.css": "/* CSS File */"
+        "css.css": "/* CSS File */"
       @server = new Server
         fileSystem: @fs
+      # Clear out default rules and sub in some specific ones.
+      @server.reset()
+      @server.addRule target: '/%', builder: Builder.Copy, source: '%'
+      @server.addRule target: '/%.css', builder: Builder.Less, source: '%.css'
+      @server.addRule target: '/%.css', builder: Builder.Less, source: '%.less'
 
     it "can resolve a copy rule", ->
-      builder = @server.generateBuilder "out/copy.css"
+      builder = @server.generateBuilder "out/index.html"
       expect(builder).to.be.an.instanceof(Builder.Copy)
-      expect(builder.sources[0].getPath()).to.equal("copy.css")
-      expect(builder.target.getPath()).to.equal("out/copy.css")
+      expect(builder.sources[0].getPath()).to.equal("index.html")
+      expect(builder.target.getPath()).to.equal("out/index.html")
 
     it "can resolve a higher-precedence rule", ->
-      builder = @server.generateBuilder "out/index.html"
-      expect(builder).to.be.an.instanceof(Builder.AutoRefresh)
+      builder = @server.generateBuilder "out/css.css"
+      expect(builder).to.be.an.instanceof(Builder.Less)
 
     it "does not resolve missing files", ->
       @server.setFallthrough no
@@ -72,10 +78,10 @@ describe 'Server', ->
       expect(alternates).to.contain("404.txt")
 
     it "sets alternates on resolved files", ->
-      builder = @server.generateBuilder "out/copy.css"
-      expect(builder).to.be.an.instanceof(Builder.Copy)
+      builder = @server.generateBuilder "out/css.css"
+      expect(builder).to.be.an.instanceof(Builder.Less)
       alternates = (n.getPath() for n in builder.impliedSources["alternates"])
-      expect(alternates).to.contain("copy.less")
+      expect(alternates).to.contain("css.less")
 
 describe 'Server.Rule', ->
   describe "#matches", ->

@@ -1,12 +1,17 @@
 { Builder } = require './Builder'
-BuildManager = require './BuildManager'
 CoffeeScript = require 'coffee-script'
 fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
 
 module.exports = class MakefileProcessor
-  constructor: (@manager, @options) ->
+  constructor: (@manager) ->
+    @proxy = new ConfigurationProxy @manager
+    @
+
+  # Load the Makefile that is bundled with webapp
+  loadBuiltin: ->
+    @loadFile path.join __dirname, "DefaultMakefile.coffee"
     @
 
   # Autodetect a Makefile if it exists and source it.
@@ -38,7 +43,7 @@ module.exports = class MakefileProcessor
       if cut_point isnt -1
         cut_point = munged_stack.lastIndexOf("\n", cut_point)
         munged_stack = munged_stack.substr 0, cut_point
-      @manager.reporter.error "Error file parsing #{filename ? 'makefile'}:\n" +
+      @manager.reporter.error "Error while parsing #{filename}:\n" +
         munged_stack
     @
 
@@ -47,23 +52,32 @@ module.exports = class MakefileProcessor
     # General stuff
     env.console = console
     env.require = require
-
     # Webapp features
-    wrap_factory = (type) => (args...) =>
-      [ target, sources, options ] = Builder.parseArguments args
-
-      options.manager = @manager
-
-      builder = new type(target, sources, options)
-      @manager.register builder
-      builder
-
-    env[k] = wrap_factory v for k, v of Builder.builderTypes
-    env.SetOptions = @setBuilderOptions
-    env.args = @options
-    env.manager = @manager
+    env.webapp = @proxy
+    env.Builder = Builder
+    env[k] = v for k, v of Builder.builderTypes
     @
 
   setBuilderOptions: (options) =>
     @manager.setOption k, v for k, v of options
     @
+
+class ConfigurationProxy
+  constructor: (@manager) ->
+    @server = @manager.server
+
+  reset: ->
+    @server.reset() if @server?
+    @manager.reset()
+
+  addBuilder: (builder) ->
+    @manager.register builder
+
+  addServerRule: (config) ->
+    return unless @server?
+    @server.addRule config
+
+  getOption: (opt) -> @manager.getOption opt
+  setOption: (opt, value) -> @manager.setOption opt, value
+  setOptions: (config) ->
+    @manager.setOption k, v for own k, v of config
