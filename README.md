@@ -1,42 +1,29 @@
 webapp-builder
 ==============
 
-Webapp Builder is a tool designed to make it easier to develop website with
-node, particularly by managing static assets. For a brief video describing a
-basic use case for a static website, check out [this screencast].
+Webapp Builder handles the static assets for you node.js application. For a brief video describing a basic use case for a static website, check out [this screencast]. Out of the box, webapp supports:
 
-Quick start
-------------
+ - Automatically reload client-side files on modification: HTML, CSS, JavaScript, even images.
+ - CommonJS modules (packaged using [modulr]).
+ - Compilation of [CoffeeScript] to JavaScipt and [LessCSS] to CSS.
+ - Automatically restart the server-side processes on modification.
+
+[this screencast]: https://vimeo.com/68808324
+[CoffeeScript]: http://coffeescript.org/
+[LessCSS]: http://lesscss.org/
+[modulr]: https://github.com/tobie/modulr-node
+
+Simple server
+-------------
 
     npm install -g webapp-builder
     webapp serve
 
-This will start a web server on a random port and begin serving the current directory. On Mac OS X, it will open a brower window to the local URL automatically.
+This will start a web server on a random port and begin serving the current directory. On Mac OS X, it will open a brower window to the local URL. As you create and edit files, the browser window will automatically refresh.
 
-Features
---------
-
-The above basic usage has the following built-in features configured by default:
-
- - Automatic reloading for **all** files: HTML, CSS, and JavaScript files.
- - Packaging of CommonJS modules using [modulr].
- - Compilation of [CoffeeScript].
- - Cmpilation of [LessCSS].
- - Advanced custom build rules by creating a Makefile.
-
-CLI Usage
----------
-
-There are 3 main commands webapp:
-
- - `webapp serve` - Starts a static asset server in the current directory. See `webapp serve --help` for all options.
- - `webapp build` - Builds every rule specified in the Makefile. See `webapp build --help` for all options.
- - `webapp monitor COMMAND ARGS` - Loads another node module COMMAND and runs it. While it is running, if any source file referenced changes, it will kill and restart the process.
-
-Programmatic Usage
-------------------
-
-If you ware developing a dynamic website build would like to take advantage of the automatic compilation and packaging that webapp provides, you can use it via the API.
+Use with express apps
+---------------------
+Webapp Builder can be used as a drop-in replacement for `express.static`.
 
 ```javascript
 var express = require('express');
@@ -53,7 +40,20 @@ app.use(my_webapp.middleware);
 server.listen(8080);
 ```
 
-[this screencast]: https://vimeo.com/68808324
-[CoffeeScript]: http://coffeescript.org/
-[LessCSS]: http://lesscss.org/
-[modulr]: https://github.com/tobie/modulr-node
+When used like this, webapp will automatically reload files as they are changed, and uses `express.static` under the hood to ensure that built products are properly cached. As an additional benefit, you can take advantage of server-side refreshing as well:
+
+    webapp monitor app.js
+
+Now every time a file required by app.js gets modified, Webapp Builder will automatically restart the server process.
+
+License
+-------
+The MIT License (MIT)
+
+Copyright (c) 2013 Ryan Patterson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
