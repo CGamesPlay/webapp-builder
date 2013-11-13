@@ -107,11 +107,17 @@ module.exports = class BuildManager
     builder.once Builder.BUILD_FINISHED, finished_handler
 
   register: (builder) ->
+    # Don't register a builder twice
+    return @ for b in @builders when b is builder
     @builders.unshift(builder)
     builder.on Builder.READY_TO_BUILD, @builderIsReady
 
     if @cacheInfo.builders?[builder.getCacheKey()]
       builder.loadCacheInfo @cacheInfo.builders[builder.getCacheKey()]
+
+    # Register all builder dependencies of a builder as well
+    for s in builder.sources when s instanceof Builder
+      @register s
 
     @reporter.verbose "Added #{builder}"
     @

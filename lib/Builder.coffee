@@ -11,8 +11,8 @@ exports.Builder = class Builder extends EventEmitter
   @builderTypes: {}
 
   @registerBuilder: (b) ->
-    @builderTypes[b.name] = b
-    Builder[b.name] = b
+    @builderTypes[b.getName()] = b
+    Builder[b.getName()] = b
 
   # Usage:
   # parseArguments([ TARGET, SOURCES, OPTIONS ])
@@ -35,6 +35,8 @@ exports.Builder = class Builder extends EventEmitter
       options ?= {}
 
       [ target, sources, options ]
+
+  @getName: -> @name
 
   constructor: (args...) ->
     [ @target, @sources, @options ] = Builder.parseArguments args
@@ -64,7 +66,7 @@ exports.Builder = class Builder extends EventEmitter
       s.on Builder.BUILD_FINISHED, @dependencyFinished
 
   toString: ->
-    "Builder.#{@constructor.name}(#{@target?.toString()})"
+    "Builder.#{@constructor.getName()}(#{@target?.toString()})"
 
   dump: ->
     @manager.reporter.error "#{@}"
@@ -147,7 +149,7 @@ exports.Builder = class Builder extends EventEmitter
     return false
 
   getCacheKey: ->
-    return @constructor.name + ":" + @target.getPath()
+    return @constructor.getName() + ":" + @target.getPath()
 
   getCacheInfo: ->
     info = {}

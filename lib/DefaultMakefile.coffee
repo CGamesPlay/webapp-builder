@@ -15,7 +15,6 @@ else
   build_css = Less
   build_html = Copy
 
-
 webapp.addServerRule
   target: '/%'
   builder: Copy

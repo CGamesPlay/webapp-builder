@@ -1,8 +1,6 @@
-# Copy should be registered first because it will *always* match when checking
-# suffixes.
-require './Copy'
-
 require './AppCache'
 require './AutoRefresh'
+require './Copy'
 require './Less'
+require './Pipeline'
 require './Modulr'

@@ -77,8 +77,8 @@ module.exports = class Server
         builder.impliedSources['alternates'] = missing_files
         return builder
       else
-        @manager.reporter.verbose "Builder #{rule.builder.name} is missing " +
-          (n.getPath() for n in missing_here).join(", ")
+        @manager.reporter.verbose "Builder #{rule.builder.getName()} is " +
+          "missing #{(n.getPath() for n in missing_here).join(", ")}"
         missing_files = missing_files.concat nodes
 
     # At this point, no rules were available to build this file.
