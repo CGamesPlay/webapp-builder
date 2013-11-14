@@ -77,18 +77,20 @@ Builder.registerBuilder class Modulr extends Builder
     # Get rid of all the detected sources
     @removeSource s for s, i in @sources when i isnt 0
 
-    resolver = new CustomDependencyResolver config
-    module = resolver.createModule main_name
+    try
+      resolver = new CustomDependencyResolver config
+      module = resolver.createModule main_name
+      resolver.fromModule module, (err, result) =>
+        if err instanceof DiscoveredNewSourcesError
+          @addSource s for s in err.sources when @sources.indexOf(s) == -1
+        return next err if err?
 
-    resolver.fromModule module, (err, result) =>
-      if err instanceof DiscoveredNewSourcesError
-        @addSource s for s in err.sources when @sources.indexOf(s) == -1
-      return next err if err?
-
-      result.output = modulr_builder.create(config).build result
-      # Hurr hurr durr
-      delete global.id
-      next null, result.output
+        result.output = modulr_builder.create(config).build result
+        # Hurr hurr durr
+        delete global.id
+        next null, result.output
+    catch err
+      return next err, null
 
 class CustomDependencyResolver extends DependencyResolver
   createSrcResolver: (config) ->

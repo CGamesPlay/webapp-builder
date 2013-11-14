@@ -20,7 +20,8 @@ module.exports = class Server
     server.middleware
 
   constructor: (args) ->
-    @fallthrough = yes
+    @fallthrough = args.fallthrough ? yes
+    delete args.fallthrough
     @reset()
     # XXX - note that the constructor for BuildManager immediately loads the
     # makefiles, meaning that this object will be partially constructed during
@@ -28,15 +29,18 @@ module.exports = class Server
     args.server = @
     @manager = new BuildManager args
     @staticServer = express.static path.resolve @manager.getOption 'targetPath'
-    @didPostInit = no
+    if args.autoRefreshUsingSocketIO?
+      @autoRefreshUsingSocketIO args.autoRefreshUsingSocketIO
+    else if args.autoRefreshUsingServer?
+      @autoRefreshUsingServer args.autoRefreshUsingServer
     @postInitialize()
 
   # This method is called after the Makefiles have been loaded. Needed to fix up
   # the targetPath of the rules.
   postInitialize: ->
+    @didPostInit = yes
     for r, i in @rules
       @rules[i].addTargetPrefix @manager.getOption 'targetPath'
-    @didPostInit = yes
     @
 
   reset: ->
@@ -69,7 +73,8 @@ module.exports = class Server
     missing_files = []
     for rule in @rules when rule.matches target.getPath()
       possibility = rule.getSourcePaths target.getPath()
-      nodes = (@manager.fs.resolve p for p in possibility)
+      nodes = for p in possibility
+        @manager.fs.resolve path.join @manager.getOption('sourcePath'), p
       missing_here = (n for n in nodes when not n.exists())
       if missing_here.length == 0
         builder = new rule.builder target, nodes,
