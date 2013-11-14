@@ -27,24 +27,22 @@ Webapp Builder can be used as a drop-in replacement for `express.static`.
 
 ```javascript
 var express = require('express');
-var http = require('http');
 var webapp = require('webapp-builder');
-
 var app = express();
-var server = http.createServer(app);
-var my_webapp = (new webapp.Server())
-  .setFallthrough(false)
-  .autoRefreshUsingServer(server);
-app.use(my_webapp.middleware);
-
-server.listen(8080);
+var server = app.listen(8080);
+app.use(webapp({
+  sourcePath: __dirname + "/public",
+  autoRefreshUsingServer: server,
+  fallthrough: false
+}));
+console.log("Listening at http://localhost:8080/");
 ```
 
-When used like this, webapp will automatically reload files as they are changed, and uses `express.static` under the hood to ensure that built products are properly cached. As an additional benefit, you can take advantage of server-side refreshing as well:
+When used like this, webapp will serve the files under `public/`, automatically refreshing them as they are changed; and uses `express.static` under the hood to ensure that built products are properly cached. As an additional benefit, you can take advantage of server-side refreshing as well:
 
     webapp monitor app.js
 
-Now every time a file required by app.js gets modified, Webapp Builder will automatically restart the server process.
+Now every time a file required by app.js gets modified, webapp will automatically restart the server process.
 
 License
 -------
