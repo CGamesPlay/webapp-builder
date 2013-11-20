@@ -9,6 +9,10 @@ exports.AppMonitor = class AppMonitor
   @main: =>
     @IS_CHILD = yes
 
+    process.on 'disconnect', ->
+      console.log "Quitting server because parent was killed"
+      process.exit 0
+
     module = path.resolve process.argv[2]
     # Fix up argv so it looks like nothing is going on
     process.argv.splice 1, 1
@@ -52,6 +56,8 @@ exports.AppMonitor = class AppMonitor
     @child = child_process.fork module_path, @args,
       env: process.env
 
+    process.on 'SIGINT', -> # Ignore SIGINTs, the child will catch and exit
+
     @child.on "message", (m) =>
       unless m is "restart"
         throw new Error "Unknown message received from child!"
@@ -63,3 +69,6 @@ exports.AppMonitor = class AppMonitor
         @restarting = false
         @child = null
         @start()
+      else
+        # Forward exit status
+        process.exit code

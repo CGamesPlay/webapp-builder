@@ -86,7 +86,7 @@ args.verbose += Reporter.INFO
 commands =
   serve: ->
     # Set up monitoring if necessary
-    if AppMonitor.IS_CHILD
+    if not args.watchFilesystem or AppMonitor.IS_CHILD
       Server = require './Server'
       express = require 'express'
       http = require 'http'
