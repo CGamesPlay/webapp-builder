@@ -120,8 +120,14 @@ class CustomSrcResolver extends SrcResolver
           @builder.impliedSources['missing'].push @manager.fs.resolve f
       return callback err
 
-    # Make sure we don't rebuild the whole thing
-    found = found.target if found instanceof Builder
+    if found instanceof Builder
+      # Get data for the built file instead of for the builder itself (to avoid
+      # a double build).
+      found = found.target
+    else if @builder.options.preprocessUsing
+      preprocessor = @builder.options.preprocessUsing
+      # Use the given builder to preprocess the file
+      found = new preprocessor found, found, manager: @manager
 
     module.relativePath = found.getPath()
     module.ext = module.relativePath.substr module.relativePath.lastIndexOf '.'
