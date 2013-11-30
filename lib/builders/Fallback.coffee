@@ -67,7 +67,7 @@ module.exports = class Fallback extends Builder
           The file #{@target.getPath()} encountered an error while building.
           Error information:
         </p>
-        <h2>#{err.message.replace(/</, '&lt;')}</h2>
+        <h2>#{err.message.replace(/</g, '&lt;')}</h2>
         <pre>#{err.stack.replace(/</g, '&lt;')}</pre>
         """
 

@@ -38,6 +38,15 @@ exports.Builder = class Builder extends EventEmitter
 
   @getName: -> @name
 
+  # Returns a new Builder that derives from the given one, except that it will
+  # have the provided options by default.
+  @withOptions: (opts) ->
+    class extends @
+      constructor: (args...) ->
+        [ target, sources, options ] = Builder.parseArguments args
+        options[k] = v for own k, v of opts when not options[k]?
+        super target, sources, options
+
   constructor: (args...) ->
     [ @target, @sources, @options ] = Builder.parseArguments args
     @manager = @options.manager
@@ -78,6 +87,7 @@ exports.Builder = class Builder extends EventEmitter
     @
 
   getPath: -> @target.getPath()
+  getReadablePath: -> @target.getPath()
 
   validateSources: ->
     @
