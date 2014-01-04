@@ -175,6 +175,7 @@ exports.Builder = class Builder extends EventEmitter
         @impliedSources[cat] = (@manager.fs.resolve s for s in list)
 
   queueBuild: ->
+    return if @isActive
     @isActive = yes
     @waitingOn = {}
 
