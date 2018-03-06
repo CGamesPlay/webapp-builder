@@ -1,5 +1,7 @@
-webapp-builder
-==============
+⛔️ DEPRECATED - webapp-builder
+===============================
+
+Webapp Builder was what I built when webpack was very young. Webpack is no longer very young, and is in fact now very good. Use that instead.
 
 Webapp Builder handles the static assets for you node.js application. For a brief video describing a basic use case for a static website, check out [this screencast]. Out of the box, webapp supports:
 
